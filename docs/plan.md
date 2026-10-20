@@ -84,7 +84,7 @@ flowchart LR
 
 1.1 Terraform skeleton in [infra/](infra/): AWS provider, a region variable, an S3 backend, and an outputs file. [infra/bootstrap/](infra/bootstrap/) creates the state bucket, the lock table, the GitHub OIDC provider, and the deploy role. Bootstrap is applied once from the laptop. Later changes use the remote state.
 1.2 Terraform workflows in [.github/workflows/](.github/workflows/). A pull request runs `terraform fmt` and `terraform validate` with no AWS credentials. A push to `main` runs `terraform plan`, then `terraform apply` after approval on the `production` environment. Pytest, Jest, and the agent zip are added in step 6.1. From this step on, [infra/](infra/) is not applied from the laptop.
-1.3 Entry bucket: server-side encryption, public access blocked, versioning on. Objects will live at `entries/{id}.md` and `entries/{id}.md.metadata.json`.
+1.3 Entry bucket: server-side encryption, public access blocked, versioning on, and TLS required. Terraform cannot destroy the bucket. Objects will live at `entries/{id}.md` and `entries/{id}.md.metadata.json`. The deploy role can manage the bucket configuration and cannot read the objects.
 1.4 S3 Vectors index, a Bedrock Knowledge Base, and an S3 data source pointed at that bucket. Embedding model chosen from what the account has enabled in the chosen region. Bedrock invocation logging stays off.
 1.5 S3 event notification to SQS, then a Lambda that calls `StartIngestionJob` once per burst. A conflict, because a job is already running, is treated as success. Pytest covers a burst collapsing to one job and a conflict counting as success, with Bedrock faked.
 1.6 Cognito user pool for one user, plus an IAM role that can write and delete only under the entries prefix.

@@ -177,3 +177,32 @@ resource "aws_iam_role_policy" "deploy_state" {
   role   = aws_iam_role.deploy.id
   policy = data.aws_iam_policy_document.deploy_state.json
 }
+
+data "aws_iam_policy_document" "deploy_entries" {
+  statement {
+    sid    = "EntryBucketManage"
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:ListBucket",
+      "s3:GetBucket*",
+      "s3:PutBucket*",
+      "s3:DeleteBucketPolicy",
+      "s3:GetEncryptionConfiguration",
+      "s3:PutEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration",
+      "s3:GetReplicationConfiguration",
+      "s3:GetAccelerateConfiguration",
+    ]
+    resources = [
+      "arn:aws:s3:::${var.project_name}-entries-${data.aws_caller_identity.current.account_id}",
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "deploy_entries" {
+  name   = "${var.project_name}-entries-bucket"
+  role   = aws_iam_role.deploy.id
+  policy = data.aws_iam_policy_document.deploy_entries.json
+}
