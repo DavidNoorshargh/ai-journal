@@ -1,0 +1,16 @@
+---
+description: Ask before editing files, running Terraform, or committing
+alwaysApply: true
+---
+
+# Confirm before changes
+
+Before any change, stop and ask in this form: "I'm about to do X. Is that ok?" Wait for an explicit yes. Do not start the change in the same turn as the question.
+
+This covers editing or creating files, running Terraform (`plan`, `apply`, or `destroy`), committing, and pushing.
+
+Reading files, searching, and explaining the current state do not need a yes.
+
+```text
+I'm about to update the deploy role trust policy and apply infra/bootstrap. Is that ok?
+```
