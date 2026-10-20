@@ -1,0 +1,5 @@
+bucket         = "ai-journal-tfstate-ACCOUNT_ID"
+key            = "ai-journal/terraform.tfstate"
+region         = "eu-west-2"
+dynamodb_table = "ai-journal-tf-lock"
+encrypt        = true
