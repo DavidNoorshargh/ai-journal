@@ -92,6 +92,9 @@ resource "aws_iam_openid_connect_provider" "github" {
 locals {
   github_oidc_provider_arn = var.create_github_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.github_oidc_provider_arn
   github_oidc_host         = "token.actions.githubusercontent.com"
+  github_owner             = split("/", var.github_repository)[0]
+  github_name              = split("/", var.github_repository)[1]
+  github_subject_prefix    = "repo:${local.github_owner}@${var.github_owner_id}/${local.github_name}@${var.github_repository_id}"
 }
 
 data "aws_iam_policy_document" "github_assume" {
@@ -114,8 +117,8 @@ data "aws_iam_policy_document" "github_assume" {
       test     = "StringLike"
       variable = "${local.github_oidc_host}:sub"
       values = [
-        "repo:${var.github_repository}:ref:refs/heads/main",
-        "repo:${var.github_repository}:environment:production",
+        "${local.github_subject_prefix}:ref:refs/heads/main",
+        "${local.github_subject_prefix}:environment:production",
       ]
     }
   }

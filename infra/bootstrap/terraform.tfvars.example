@@ -1,3 +1,5 @@
 aws_region       = "eu-west-2"
 project_name     = "ai-journal"
-github_repository = "OWNER/ai-journal"
+github_repository    = "OWNER/ai-journal"
+github_owner_id      = "OWNER_ID"
+github_repository_id = "REPOSITORY_ID"

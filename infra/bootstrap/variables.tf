@@ -20,6 +20,26 @@ variable "github_repository" {
   }
 }
 
+variable "github_owner_id" {
+  description = "Numeric GitHub owner id. Repositories created after 15 July 2026 put this in the OIDC subject."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_owner_id))
+    error_message = "github_owner_id must be the numeric owner id."
+  }
+}
+
+variable "github_repository_id" {
+  description = "Numeric GitHub repository id. Repositories created after 15 July 2026 put this in the OIDC subject."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_repository_id))
+    error_message = "github_repository_id must be the numeric repository id."
+  }
+}
+
 variable "create_github_oidc_provider" {
   description = "Create the account-wide GitHub Actions OIDC provider. Set false when this account already has one."
   type        = bool
