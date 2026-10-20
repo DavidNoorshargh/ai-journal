@@ -1,0 +1,129 @@
+# Terraform for infra/ only. Bootstrap stays a one-time local apply.
+#
+# Before the first apply on main:
+# - Apply infra/bootstrap locally.
+# - Set the repository variable AWS_ROLE_ARN to the deploy_role_arn output.
+# - Create the GitHub Environment "production" and add yourself as a required reviewer.
+#   Until that reviewer is set, a push to main can apply without a second approval.
+
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - infra/**
+      - .github/workflows/terraform.yml
+  push:
+    branches:
+      - main
+    paths:
+      - infra/**
+      - .github/workflows/terraform.yml
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  AWS_REGION: eu-west-2
+  PROJECT_NAME: ai-journal
+  TF_VERSION: 1.16.3
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive infra
+
+      - name: Validate the main stack
+        working-directory: infra
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validate bootstrap
+        working-directory: infra/bootstrap
+        env:
+          TF_VAR_github_repository: ${{ github.repository }}
+        run: |
+          terraform init -input=false
+          terraform validate
+
+  plan:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure the remote backend
+        working-directory: infra
+        run: bash ./scripts/backend-config.sh
+
+      - name: Plan
+        working-directory: infra
+        run: |
+          terraform init -backend-config=backend.hcl -input=false
+          terraform plan -input=false -out=tfplan
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: infra/tfplan
+          retention-days: 5
+
+  apply:
+    needs: plan
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: infra
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure the remote backend
+        working-directory: infra
+        run: bash ./scripts/backend-config.sh
+
+      - name: Apply the saved plan
+        working-directory: infra
+        run: |
+          terraform init -backend-config=backend.hcl -input=false
+          terraform apply -input=false tfplan
