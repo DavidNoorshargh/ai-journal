@@ -12,12 +12,14 @@ on:
   pull_request:
     paths:
       - infra/**
+      - agent/**
       - .github/workflows/terraform.yml
   push:
     branches:
       - main
     paths:
       - infra/**
+      - agent/**
       - .github/workflows/terraform.yml
 
 concurrency:
@@ -44,6 +46,12 @@ jobs:
 
       - name: Check formatting
         run: terraform fmt -check -recursive infra
+
+      - name: Zip the agent
+        run: |
+          mkdir -p infra/build
+          rm -f infra/build/agent.zip
+          zip -j infra/build/agent.zip agent/main.py
 
       - name: Validate the main stack
         working-directory: infra
@@ -81,8 +89,16 @@ jobs:
         working-directory: infra
         run: bash ./scripts/backend-config.sh
 
+      - name: Zip the agent
+        run: |
+          mkdir -p infra/build
+          rm -f infra/build/agent.zip
+          zip -j infra/build/agent.zip agent/main.py
+
       - name: Plan
         working-directory: infra
+        env:
+          TF_VAR_agent_source_sha: ${{ github.sha }}
         run: |
           terraform init -backend-config=backend.hcl -input=false
           terraform plan -input=false -out=tfplan
@@ -100,6 +116,13 @@ jobs:
         with:
           name: ingestion-zip
           path: infra/build/ingestion.zip
+          if-no-files-found: error
+          retention-days: 5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-zip
+          path: infra/build/agent.zip
           if-no-files-found: error
           retention-days: 5
 
@@ -139,6 +162,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ingestion-zip
+          path: infra/build
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-zip
           path: infra/build
 
       - name: Apply the saved plan

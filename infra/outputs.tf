@@ -42,3 +42,8 @@ output "journal_user_email" {
   description = "Email of the single journal user."
   value       = var.journal_user_email
 }
+
+output "agent_runtime_arn" {
+  description = "AgentCore runtime that answers a question from the journal."
+  value       = aws_bedrockagentcore_agent_runtime.journal.agent_runtime_arn
+}

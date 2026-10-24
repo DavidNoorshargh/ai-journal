@@ -2,6 +2,7 @@
 infra/build/
 __pycache__/
 *.pyc
+.pytest_cache/
 *.tfstate
 *.tfstate.*
 *.tfvars

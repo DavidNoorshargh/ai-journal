@@ -505,3 +505,102 @@ resource "aws_iam_role_policy" "deploy_auth" {
   role   = aws_iam_role.deploy.id
   policy = data.aws_iam_policy_document.deploy_auth.json
 }
+
+data "aws_iam_policy_document" "deploy_agent" {
+  statement {
+    sid    = "ArtifactBucket"
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:ListBucket",
+      "s3:GetBucket*",
+      "s3:PutBucket*",
+      "s3:DeleteBucketPolicy",
+      "s3:GetEncryptionConfiguration",
+      "s3:PutEncryptionConfiguration",
+    ]
+    resources = ["arn:aws:s3:::${var.project_name}-artifacts-${data.aws_caller_identity.current.account_id}"]
+  }
+
+  statement {
+    sid    = "ArtifactObjects"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:GetObjectTagging",
+      "s3:PutObjectTagging",
+      "s3:GetObjectAttributes",
+      "s3:AbortMultipartUpload",
+    ]
+    resources = ["arn:aws:s3:::${var.project_name}-artifacts-${data.aws_caller_identity.current.account_id}/agent/*"]
+  }
+
+  statement {
+    sid    = "AgentRole"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:PutRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:DeleteRolePolicy",
+    ]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-agent"]
+  }
+
+  statement {
+    sid       = "PassAgentRole"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-agent"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["bedrock-agentcore.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid       = "CreateRuntime"
+    effect    = "Allow"
+    actions   = ["bedrock-agentcore:CreateAgentRuntime"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "Runtime"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:GetAgentRuntime",
+      "bedrock-agentcore:UpdateAgentRuntime",
+      "bedrock-agentcore:DeleteAgentRuntime",
+      "bedrock-agentcore:ListAgentRuntimes",
+      "bedrock-agentcore:CreateAgentRuntimeEndpoint",
+      "bedrock-agentcore:GetAgentRuntimeEndpoint",
+      "bedrock-agentcore:UpdateAgentRuntimeEndpoint",
+      "bedrock-agentcore:DeleteAgentRuntimeEndpoint",
+      "bedrock-agentcore:ListAgentRuntimeEndpoints",
+      "bedrock-agentcore:TagResource",
+      "bedrock-agentcore:UntagResource",
+      "bedrock-agentcore:ListTagsForResource",
+    ]
+    resources = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:runtime/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "deploy_agent" {
+  name   = "${var.project_name}-agent"
+  role   = aws_iam_role.deploy.id
+  policy = data.aws_iam_policy_document.deploy_agent.json
+}
