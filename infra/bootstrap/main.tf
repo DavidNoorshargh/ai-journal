@@ -206,3 +206,85 @@ resource "aws_iam_role_policy" "deploy_entries" {
   role   = aws_iam_role.deploy.id
   policy = data.aws_iam_policy_document.deploy_entries.json
 }
+
+data "aws_iam_policy_document" "deploy_knowledge" {
+  statement {
+    sid    = "KnowledgeBaseRole"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:PutRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:DeleteRolePolicy",
+    ]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-knowledge-base"]
+  }
+
+  statement {
+    sid       = "PassKnowledgeBaseRole"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-knowledge-base"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["bedrock.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid    = "VectorBucket"
+    effect = "Allow"
+    actions = [
+      "s3vectors:CreateVectorBucket",
+      "s3vectors:GetVectorBucket",
+      "s3vectors:DeleteVectorBucket",
+      "s3vectors:CreateIndex",
+      "s3vectors:GetIndex",
+      "s3vectors:DeleteIndex",
+      "s3vectors:ListIndexes",
+      "s3vectors:TagResource",
+      "s3vectors:UntagResource",
+      "s3vectors:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:s3vectors:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/${var.project_name}-vectors-${data.aws_caller_identity.current.account_id}",
+      "arn:aws:s3vectors:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/${var.project_name}-vectors-${data.aws_caller_identity.current.account_id}/index/*",
+    ]
+  }
+
+  statement {
+    sid    = "KnowledgeBase"
+    effect = "Allow"
+    actions = [
+      "bedrock:CreateKnowledgeBase",
+      "bedrock:GetKnowledgeBase",
+      "bedrock:UpdateKnowledgeBase",
+      "bedrock:DeleteKnowledgeBase",
+      "bedrock:CreateDataSource",
+      "bedrock:GetDataSource",
+      "bedrock:UpdateDataSource",
+      "bedrock:DeleteDataSource",
+      "bedrock:ListDataSources",
+      "bedrock:TagResource",
+      "bedrock:UntagResource",
+      "bedrock:ListTagsForResource",
+    ]
+    resources = ["arn:aws:bedrock:${var.aws_region}:${data.aws_caller_identity.current.account_id}:knowledge-base/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "deploy_knowledge" {
+  name   = "${var.project_name}-knowledge-base"
+  role   = aws_iam_role.deploy.id
+  policy = data.aws_iam_policy_document.deploy_knowledge.json
+}
