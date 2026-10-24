@@ -156,6 +156,7 @@ resource "aws_bedrockagentcore_agent_runtime" "journal" {
   }
 
   environment_variables = {
+    AWS_REGION        = var.aws_region
     KNOWLEDGE_BASE_ID = aws_bedrockagent_knowledge_base.journal.id
     MODEL_ID          = local.chat_model_id
   }
