@@ -594,11 +594,20 @@ data "aws_iam_policy_document" "deploy_agent" {
       "bedrock-agentcore:UpdateAgentRuntimeEndpoint",
       "bedrock-agentcore:DeleteAgentRuntimeEndpoint",
       "bedrock-agentcore:ListAgentRuntimeEndpoints",
+    ]
+    resources = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:runtime/*"]
+  }
+
+  # CreateAgentRuntime tags the workload identity as well as the runtime.
+  statement {
+    sid    = "TagAgentCore"
+    effect = "Allow"
+    actions = [
       "bedrock-agentcore:TagResource",
       "bedrock-agentcore:UntagResource",
       "bedrock-agentcore:ListTagsForResource",
     ]
-    resources = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:runtime/*"]
+    resources = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*"]
   }
 
   statement {
