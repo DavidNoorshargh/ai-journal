@@ -19,6 +19,6 @@ output "knowledge_base_id" {
 }
 
 output "knowledge_base_data_source_id" {
-  description = "S3 data source for the entries prefix. Ingestion is started in a later step."
+  description = "S3 data source for the entries prefix. The ingestion Lambda starts the sync."
   value       = aws_bedrockagent_data_source.entries.data_source_id
 }
