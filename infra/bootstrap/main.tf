@@ -598,6 +598,20 @@ data "aws_iam_policy_document" "deploy_agent" {
     resources = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:runtime/*"]
   }
 
+  # CreateAgentRuntime creates a workload identity in the default directory.
+  statement {
+    sid    = "WorkloadIdentity"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:CreateWorkloadIdentity",
+      "bedrock-agentcore:GetWorkloadIdentity",
+      "bedrock-agentcore:UpdateWorkloadIdentity",
+      "bedrock-agentcore:DeleteWorkloadIdentity",
+      "bedrock-agentcore:ListWorkloadIdentities",
+    ]
+    resources = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:workload-identity-directory/*"]
+  }
+
   # CreateAgentRuntime tags the workload identity as well as the runtime.
   statement {
     sid    = "TagAgentCore"
