@@ -370,6 +370,9 @@ data "aws_iam_policy_document" "deploy_ingestion" {
       "lambda:UpdateEventSourceMapping",
       "lambda:DeleteEventSourceMapping",
       "lambda:ListEventSourceMappings",
+      "lambda:TagResource",
+      "lambda:UntagResource",
+      "lambda:ListTags",
     ]
     resources = ["arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:event-source-mapping:*"]
   }
