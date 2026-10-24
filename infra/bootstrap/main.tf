@@ -600,6 +600,19 @@ data "aws_iam_policy_document" "deploy_agent" {
     ]
     resources = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:runtime/*"]
   }
+
+  statement {
+    sid       = "CreateRuntimeIdentityRole"
+    effect    = "Allow"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/runtime-identity.bedrock-agentcore.amazonaws.com/AWSServiceRoleForBedrockAgentCoreRuntimeIdentity"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:AWSServiceName"
+      values   = ["runtime-identity.bedrock-agentcore.amazonaws.com"]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "deploy_agent" {
