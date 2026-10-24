@@ -519,6 +519,9 @@ data "aws_iam_policy_document" "deploy_agent" {
       "s3:DeleteBucketPolicy",
       "s3:GetEncryptionConfiguration",
       "s3:PutEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration",
+      "s3:GetReplicationConfiguration",
+      "s3:GetAccelerateConfiguration",
     ]
     resources = ["arn:aws:s3:::${var.project_name}-artifacts-${data.aws_caller_identity.current.account_id}"]
   }
