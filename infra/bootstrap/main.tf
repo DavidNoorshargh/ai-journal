@@ -486,17 +486,14 @@ data "aws_iam_policy_document" "deploy_auth" {
     resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-entries-write"]
   }
 
+  # SetIdentityPoolRoles checks iam:PassRole and does not set iam:PassedToService,
+  # so a condition on that key never matches. The role trust policy is what
+  # limits assumption to this identity pool.
   statement {
     sid       = "PassEntriesWriteRole"
     effect    = "Allow"
     actions   = ["iam:PassRole"]
     resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-entries-write"]
-
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values   = ["cognito-identity.amazonaws.com"]
-    }
   }
 }
 

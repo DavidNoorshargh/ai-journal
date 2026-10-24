@@ -93,6 +93,16 @@ jobs:
           path: infra/tfplan
           retention-days: 5
 
+      # The saved plan points at this zip. Apply runs on a fresh runner, so the
+      # file has to travel with the plan. .terraform is not used because that
+      # directory is hidden and the upload would skip it.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-zip
+          path: infra/build/ingestion.zip
+          if-no-files-found: error
+          retention-days: 5
+
   apply:
     needs: plan
     if: github.event_name == 'push'
@@ -122,8 +132,15 @@ jobs:
         working-directory: infra
         run: bash ./scripts/backend-config.sh
 
+      - name: Init
+        working-directory: infra
+        run: terraform init -backend-config=backend.hcl -input=false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ingestion-zip
+          path: infra/build
+
       - name: Apply the saved plan
         working-directory: infra
-        run: |
-          terraform init -backend-config=backend.hcl -input=false
-          terraform apply -input=false tfplan
+        run: terraform apply -input=false tfplan

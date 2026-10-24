@@ -1,4 +1,5 @@
 .terraform/
+infra/build/
 __pycache__/
 *.pyc
 *.tfstate

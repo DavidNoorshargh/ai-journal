@@ -1,7 +1,7 @@
 data "archive_file" "ingestion" {
   type        = "zip"
   source_file = "${path.module}/../ingestion/handler.py"
-  output_path = "${path.module}/.terraform/ingestion.zip"
+  output_path = "${path.module}/build/ingestion.zip"
 }
 
 resource "aws_sqs_queue" "ingestion_dlq" {
