@@ -123,6 +123,22 @@ def test_one_day_window_drops_other_days():
     }
 
 
+def test_dashed_dates_are_normalized():
+    client = FakeRetrieve([])
+
+    search_entries(
+        "lantern",
+        start_date="2026-10-24",
+        end_date="2026-10-24",
+        client=client,
+        knowledge_base_id="kb",
+    )
+
+    date_filter = client.calls[0]["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"]
+    assert date_filter["andAll"][0]["greaterThanOrEquals"]["value"] == "20261024"
+    assert date_filter["andAll"][1]["lessThanOrEquals"]["value"] == "20261024"
+
+
 def test_date_range_must_be_ordered():
     with pytest.raises(ValueError):
         search_entries("lantern", start_date="20261024", end_date="20261001", client=FakeRetrieve([]), knowledge_base_id="kb")

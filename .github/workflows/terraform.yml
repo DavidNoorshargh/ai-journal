@@ -48,10 +48,7 @@ jobs:
         run: terraform fmt -check -recursive infra
 
       - name: Zip the agent
-        run: |
-          mkdir -p infra/build
-          rm -f infra/build/agent.zip
-          zip -j infra/build/agent.zip agent/main.py
+        run: bash infra/scripts/package-agent.sh
 
       - name: Validate the main stack
         working-directory: infra
@@ -90,10 +87,7 @@ jobs:
         run: bash ./scripts/backend-config.sh
 
       - name: Zip the agent
-        run: |
-          mkdir -p infra/build
-          rm -f infra/build/agent.zip
-          zip -j infra/build/agent.zip agent/main.py
+        run: bash infra/scripts/package-agent.sh
 
       - name: Plan
         working-directory: infra

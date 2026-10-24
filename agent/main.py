@@ -336,9 +336,12 @@ def _tags(tags):
 def _date(value, name):
     if value is None:
         return None
-    if not isinstance(value, str) or len(value) != 8 or not value.isdigit():
+    if not isinstance(value, str):
         raise ValueError(f"{name} must be YYYYMMDD")
-    return value
+    digits = value.replace("-", "")
+    if len(digits) != 8 or not digits.isdigit():
+        raise ValueError(f"{name} must be YYYYMMDD")
+    return digits
 
 
 def _metadata_filter(tags, start_date, end_date):
@@ -427,8 +430,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._json(200, invoke(payload))
         except ValueError as exc:
             self._json(400, {"error": str(exc)})
-        except Exception:
-            self._json(500, {"error": "request failed"})
+        except Exception as exc:
+            self._json(500, {"error": type(exc).__name__})
 
     def _json(self, status, body):
         encoded = json.dumps(body).encode()
