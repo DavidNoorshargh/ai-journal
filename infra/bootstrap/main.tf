@@ -390,10 +390,118 @@ data "aws_iam_policy_document" "deploy_ingestion" {
     ]
   }
 
+  # DescribeLogGroups is how Terraform refreshes a log group, and the API
+  # call is not scoped to the group name. It returns names, not log events.
+  statement {
+    sid       = "DescribeLogGroups"
+    effect    = "Allow"
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["*"]
+  }
+
 }
 
 resource "aws_iam_role_policy" "deploy_ingestion" {
   name   = "${var.project_name}-ingestion"
   role   = aws_iam_role.deploy.id
   policy = data.aws_iam_policy_document.deploy_ingestion.json
+}
+
+data "aws_iam_policy_document" "deploy_auth" {
+  statement {
+    sid       = "CreateUserPool"
+    effect    = "Allow"
+    actions   = ["cognito-idp:CreateUserPool"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "UserPool"
+    effect = "Allow"
+    actions = [
+      "cognito-idp:DeleteUserPool",
+      "cognito-idp:DescribeUserPool",
+      "cognito-idp:UpdateUserPool",
+      "cognito-idp:CreateUserPoolClient",
+      "cognito-idp:DescribeUserPoolClient",
+      "cognito-idp:UpdateUserPoolClient",
+      "cognito-idp:DeleteUserPoolClient",
+      "cognito-idp:ListUserPoolClients",
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminGetUser",
+      "cognito-idp:AdminDeleteUser",
+      "cognito-idp:AdminUpdateUserAttributes",
+      "cognito-idp:AdminEnableUser",
+      "cognito-idp:AdminDisableUser",
+      "cognito-idp:ListUsers",
+      "cognito-idp:GetUserPoolMfaConfig",
+      "cognito-idp:SetUserPoolMfaConfig",
+      "cognito-idp:TagResource",
+      "cognito-idp:UntagResource",
+      "cognito-idp:ListTagsForResource",
+    ]
+    resources = ["arn:aws:cognito-idp:${var.aws_region}:${data.aws_caller_identity.current.account_id}:userpool/*"]
+  }
+
+  statement {
+    sid       = "CreateIdentityPool"
+    effect    = "Allow"
+    actions   = ["cognito-identity:CreateIdentityPool"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "IdentityPool"
+    effect = "Allow"
+    actions = [
+      "cognito-identity:DeleteIdentityPool",
+      "cognito-identity:DescribeIdentityPool",
+      "cognito-identity:UpdateIdentityPool",
+      "cognito-identity:GetIdentityPoolRoles",
+      "cognito-identity:SetIdentityPoolRoles",
+      "cognito-identity:TagResource",
+      "cognito-identity:UntagResource",
+      "cognito-identity:ListTagsForResource",
+    ]
+    resources = ["arn:aws:cognito-identity:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identitypool/*"]
+  }
+
+  statement {
+    sid    = "EntriesWriteRole"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:PutRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:DeleteRolePolicy",
+    ]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-entries-write"]
+  }
+
+  statement {
+    sid       = "PassEntriesWriteRole"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-entries-write"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["cognito-identity.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "deploy_auth" {
+  name   = "${var.project_name}-auth"
+  role   = aws_iam_role.deploy.id
+  policy = data.aws_iam_policy_document.deploy_auth.json
 }

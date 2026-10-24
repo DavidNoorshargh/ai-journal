@@ -22,3 +22,23 @@ output "knowledge_base_data_source_id" {
   description = "S3 data source for the entries prefix. The ingestion Lambda starts the sync."
   value       = aws_bedrockagent_data_source.entries.data_source_id
 }
+
+output "user_pool_id" {
+  description = "Cognito user pool for the single journal user. Sign-up is disabled."
+  value       = aws_cognito_user_pool.journal.id
+}
+
+output "user_pool_client_id" {
+  description = "Public app client for email and password sign-in."
+  value       = aws_cognito_user_pool_client.journal.id
+}
+
+output "identity_pool_id" {
+  description = "Identity pool that exchanges the user pool token for the entries write role."
+  value       = aws_cognito_identity_pool.journal.id
+}
+
+output "journal_user_email" {
+  description = "Email of the single journal user."
+  value       = var.journal_user_email
+}

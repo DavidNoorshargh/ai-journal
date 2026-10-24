@@ -87,8 +87,8 @@ flowchart LR
 1.3 Entry bucket: server-side encryption, public access blocked, versioning on, and TLS required. Terraform cannot destroy the bucket. Objects will live at `entries/{id}.md` and `entries/{id}.md.metadata.json`. The deploy role can manage the bucket configuration and cannot read the objects.
 1.4 S3 Vectors index, a Bedrock Knowledge Base, and an S3 data source pointed at the entries prefix. The embedding model is Titan Text Embeddings V2, 1024 dimensions, cosine distance. `date` and `tags` stay filterable. Bedrock invocation logging stays off.
 1.5 S3 event notification on the entries prefix, including deletes, to SQS. A 60 second batch window collapses a burst into one Lambda call, which calls `StartIngestionJob` once. A conflict, because a job is already running, is treated as success. Pytest covers a burst collapsing to one job and a conflict counting as success, with Bedrock faked.
-1.6 Cognito user pool for one user, plus an IAM role that can write and delete only under the entries prefix.
-1.7 The workflows from step 1.2 plan and apply this stack. After the first apply, a hand-uploaded fixture entry should become retrievable.
+1.6 Cognito user pool with sign-up disabled, one user (`journal@example.com`), and an app client. An identity pool gives that user an IAM role that can put and delete objects only under `entries/`. The password is not in Terraform or git. After apply it is set once and stored in Secrets Manager.
+1.7 The workflows from step 1.2 plan and apply this stack. After that apply, a hand-uploaded fixture entry should become retrievable.
 
 ### 2. Agent
 
