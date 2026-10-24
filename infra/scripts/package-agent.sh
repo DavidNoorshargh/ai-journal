@@ -15,7 +15,7 @@ python3 -m pip install \
   --only-binary=:all: \
   --target "$dest" \
   boto3
-cp "$root/agent/main.py" "$dest/main.py"
+cp "$root/agent/main.py" "$root/agent/search.py" "$root/agent/model.py" "$dest/"
 python3 -c 'import pathlib, shutil
 root = pathlib.Path("'"$dest"'")
 for path in root.rglob("__pycache__"):

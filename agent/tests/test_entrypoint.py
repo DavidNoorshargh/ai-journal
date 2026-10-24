@@ -12,12 +12,13 @@ class ScriptedModel:
         self.prompts = []
         self.results = []
 
-    def complete(self, prompt, tool_result):
-        if tool_result is None:
-            self.prompts.append(prompt)
-            return {"toolUse": self.tool, "toolName": "search_entries"}
-        self.results.append(tool_result)
-        return {"text": self.text, "toolUse": {"query": "second call"}}
+    def choose_search(self, prompt):
+        self.prompts.append(prompt)
+        return {"toolUse": self.tool, "toolName": "search_entries"}
+
+    def write_answer(self, prompt, entries):
+        self.results.append({"entries": entries})
+        return self.text
 
 
 def test_question_and_unsynced_entries_are_read():
