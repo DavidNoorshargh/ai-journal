@@ -8,7 +8,7 @@ The reviewed design and build order are in [docs/plan.md](docs/plan.md).
 
 ## Stack
 
-- React Native with Expo, and SQLite on the phone. The app is not in this repo yet.
+- React Native with Expo, and SQLite on the phone. The app is in [app/](app/). Launch it on the Android emulator with the steps in [app/README.md](app/README.md).
 - S3 for the uploaded entries, a Bedrock Knowledge Base, and S3 Vectors.
 - A Python agent on AgentCore Runtime, with one tool, `search_entries`.
 - Cognito for a single pre-created user. There is no sign-up.
