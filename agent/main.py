@@ -101,6 +101,36 @@ def _unsynced_entry(entry):
     }
 
 
+def time_windows(today):
+    """The three phrases the prompt defines, resolved from a known today."""
+    if not isinstance(today, date):
+        today = date.fromisoformat(today)
+
+    previous_year = today.year - 1
+    week_end = today - timedelta(days=1)
+    week_start = today - timedelta(days=7)
+    same_day = _same_day_previous_month(today)
+    return {
+        "last year": (f"{previous_year}0101", f"{previous_year}1231"),
+        "last week": (_format_yyyymmdd(week_start), _format_yyyymmdd(week_end)),
+        "this day last month": (_format_yyyymmdd(same_day), _format_yyyymmdd(same_day)),
+    }
+
+
+def _same_day_previous_month(today):
+    month = today.month - 1
+    year = today.year
+    if month == 0:
+        month = 12
+        year -= 1
+    last_day = calendar.monthrange(year, month)[1]
+    return date(year, month, min(today.day, last_day))
+
+
+def _format_yyyymmdd(value):
+    return value.strftime("%Y%m%d")
+
+
 def _prompt(question, unsynced, today):
     lines = _instruction_lines(today)
     lines.extend(["", f"Question: {question}"])
@@ -136,36 +166,6 @@ def _unsynced_lines(unsynced):
     for entry in unsynced:
         lines.append(f"{entry['entryId']} {entry['date']} {entry['text']}")
     return lines
-
-
-def time_windows(today):
-    """The three phrases the prompt defines, resolved from a known today."""
-    if not isinstance(today, date):
-        today = date.fromisoformat(today)
-
-    previous_year = today.year - 1
-    week_end = today - timedelta(days=1)
-    week_start = today - timedelta(days=7)
-    same_day = _same_day_previous_month(today)
-    return {
-        "last year": (f"{previous_year}0101", f"{previous_year}1231"),
-        "last week": (_format_yyyymmdd(week_start), _format_yyyymmdd(week_end)),
-        "this day last month": (_format_yyyymmdd(same_day), _format_yyyymmdd(same_day)),
-    }
-
-
-def _same_day_previous_month(today):
-    month = today.month - 1
-    year = today.year
-    if month == 0:
-        month = 12
-        year -= 1
-    last_day = calendar.monthrange(year, month)[1]
-    return date(year, month, min(today.day, last_day))
-
-
-def _format_yyyymmdd(value):
-    return value.strftime("%Y%m%d")
 
 
 def _format_iso_date(value):

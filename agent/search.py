@@ -18,6 +18,16 @@ def search_entries(query, tags=None, start_date=None, end_date=None, *, client=N
     return [entry for entry in entries if _date_in_window(entry.get("date") or "", start_date, end_date)]
 
 
+def require_tags(tags):
+    if tags is None:
+        return []
+    if isinstance(tags, str) or not isinstance(tags, list):
+        raise ValueError("tags must be a list of strings")
+    if not all(isinstance(tag, str) and tag.strip() for tag in tags):
+        raise ValueError("tags must be a list of strings")
+    return [tag.strip() for tag in tags]
+
+
 def _prepare_search(query, tags, start_date, end_date):
     if not isinstance(query, str):
         raise ValueError("query is required")
@@ -163,16 +173,6 @@ def _date_in_window(entry_date, start_date, end_date):
     if end_date and entry_date > end_date:
         return False
     return True
-
-
-def require_tags(tags):
-    if tags is None:
-        return []
-    if isinstance(tags, str) or not isinstance(tags, list):
-        raise ValueError("tags must be a list of strings")
-    if not all(isinstance(tag, str) and tag.strip() for tag in tags):
-        raise ValueError("tags must be a list of strings")
-    return [tag.strip() for tag in tags]
 
 
 def _require_yyyymmdd(value, name):
