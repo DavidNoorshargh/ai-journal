@@ -103,6 +103,13 @@ export async function listEntries(sql: Sql): Promise<Entry[]> {
   return rows.map((row) => toEntry(row, tagsFor(tags, row.id)));
 }
 
+export function entriesForFilter(entries: readonly Entry[], filter: "all" | Tag): Entry[] {
+  if (filter === "all") {
+    return [...entries];
+  }
+  return entries.filter((entry) => entry.tags.includes(filter));
+}
+
 export async function updateEntry(sql: Sql, id: string, input: EditedEntry): Promise<Entry> {
   const current = await readEntry(sql, id);
   if (current === null) {

@@ -1,12 +1,14 @@
 import {
   createEntry,
   deleteEntry,
+  entriesForFilter,
   entryLabel,
   listEntries,
   listPendingDeletes,
   prepareJournal,
   readEntry,
   updateEntry,
+  type Entry,
 } from "@/journal/entries";
 import { nodeSql } from "@/journal/node-sql";
 import type { Sql } from "@/journal/sql";
@@ -213,4 +215,34 @@ describe("journal entries", () => {
       body: "Already stored.",
     });
   });
+
+  it("keeps a note under All and under each of its tags", () => {
+    const notes = [
+      note("work-only", ["work"]),
+      note("both", ["life", "work"]),
+      note("untagged", []),
+    ];
+
+    expect(ids(entriesForFilter(notes, "all"))).toEqual(["work-only", "both", "untagged"]);
+    expect(ids(entriesForFilter(notes, "work"))).toEqual(["work-only", "both"]);
+    expect(ids(entriesForFilter(notes, "life"))).toEqual(["both"]);
+    expect(entriesForFilter(notes, "thoughts")).toEqual([]);
+  });
 });
+
+function note(id: string, tags: Entry["tags"]): Entry {
+  return {
+    id,
+    date: "20261029",
+    title: "",
+    body: id,
+    tags,
+    syncState: "pending",
+    createdAt: "2026-10-29T00:00:00.000Z",
+    updatedAt: "2026-10-29T00:00:00.000Z",
+  };
+}
+
+function ids(entries: readonly Entry[]): string[] {
+  return entries.map((entry) => entry.id);
+}

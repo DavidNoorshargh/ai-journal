@@ -181,3 +181,39 @@ Feature: Notes stay on the phone
     Then the sign-in screen is shown
     And the notes are not shown
 ```
+
+```gherkin
+Feature: Filter notes by tag
+
+  The tag chips are All, life, work, thoughts, and learnings.
+  A note appears under All and under each tag it has. A note with no tags appears only under All.
+  Write and Ask stay above the list.
+
+  Background:
+    Given a session is stored
+    And the notes screen is shown
+    And a note tagged "work" exists
+    And a note tagged "life" and "work" exists
+    And a note with no tags exists
+
+  Scenario: All shows every note
+    When All is selected
+    Then all three notes are in the list
+    And Write and Ask are shown
+
+  Scenario: A tag shows only its notes
+    When "work" is selected
+    Then the two work notes are in the list
+    And the note with no tags is not in the list
+
+  Scenario: A tag with no notes is empty
+    When "thoughts" is selected
+    Then the list says "No notes for this tag"
+    And Write and Ask are shown
+
+  Scenario: An empty journal says there are no entries
+    Given no notes are stored
+    When All is selected
+    Then the list says "No entries yet"
+    And Write and Ask are shown
+```

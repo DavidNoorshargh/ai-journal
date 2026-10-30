@@ -4,7 +4,7 @@ import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { listDate } from "@/journal/dates";
-import { entryLabel, listEntries, type Entry, type SyncState } from "@/journal/entries";
+import { entriesForFilter, entryLabel, listEntries, type Entry, type SyncState } from "@/journal/entries";
 import { openJournal } from "@/journal/open-journal";
 import { TAGS, type Tag } from "@/journal/tags";
 import { useSession } from "@/session/session-context";
@@ -22,6 +22,7 @@ export function NotesScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [ready, setReady] = useState(false);
+  const visible = entriesForFilter(entries, filter);
 
   useFocusEffect(
     useCallback(() => {
@@ -87,7 +88,7 @@ export function NotesScreen() {
         ))}
       </View>
       <FlatList
-        data={entries}
+        data={visible}
         keyExtractor={(entry) => entry.id}
         style={styles.list}
         ListEmptyComponent={
