@@ -5,6 +5,8 @@ import {
   entryLabel,
   listEntries,
   listPendingDeletes,
+  markFailed,
+  markUploaded,
   prepareJournal,
   readEntry,
   updateEntry,
@@ -69,7 +71,7 @@ describe("journal entries", () => {
     expect(listed.map((entry) => entry.id)).toEqual(["note-2", "note-1"]);
   });
 
-  it("updates the note and keeps its sync state", async () => {
+  it("returns an edited note to pending", async () => {
     const sql = await journal();
     await createEntry(sql, {
       id: "note-1",
@@ -94,11 +96,52 @@ describe("journal entries", () => {
       title: "River walk",
       body: "Revised.",
       tags: ["thoughts"],
-      syncState: "uploaded",
+      syncState: "pending",
       createdAt: "2026-10-28T08:00:00.000Z",
       updatedAt: "2026-10-29T09:00:00.000Z",
     });
     expect(await readEntry(sql, "note-1")).toEqual(updated);
+  });
+
+  it("marks a pending note uploaded", async () => {
+    const sql = await journal();
+    const created = await createEntry(sql, {
+      id: "note-1",
+      date: "20261028",
+      body: "Ready to leave the phone.",
+      tags: ["work"],
+      now: new Date("2026-10-28T08:00:00.000Z"),
+    });
+
+    const uploaded = await markUploaded(sql, "note-1");
+
+    expect(uploaded).toEqual({ ...created, syncState: "uploaded" });
+    expect(await readEntry(sql, "note-1")).toEqual(uploaded);
+    expect((await listEntries(sql)).map((entry) => entry.id)).toEqual(["note-1"]);
+  });
+
+  it("keeps a failed note in the list", async () => {
+    const sql = await journal();
+    const created = await createEntry(sql, {
+      id: "note-1",
+      date: "20261028",
+      body: "Still on the phone.",
+      tags: ["life"],
+      now: new Date("2026-10-28T08:00:00.000Z"),
+    });
+
+    const failed = await markFailed(sql, "note-1");
+
+    expect(failed).toEqual({ ...created, syncState: "failed" });
+    expect(await readEntry(sql, "note-1")).toEqual(failed);
+    expect(await listEntries(sql)).toEqual([failed]);
+  });
+
+  it("rejects a sync mark for a missing note", async () => {
+    const sql = await journal();
+
+    await expect(markUploaded(sql, "missing")).rejects.toThrow("Note not found.");
+    await expect(markFailed(sql, "missing")).rejects.toThrow("Note not found.");
   });
 
   it("removes a deleted note from the list and keeps its id for the cloud delete", async () => {
@@ -158,7 +201,7 @@ describe("journal entries", () => {
       tags: ["work"],
     });
     const session = memorySession();
-    await signIn(session, "ada@example.com", "secret-password");
+    await signIn(session, "ada@example.com", "secret-password", async () => "refresh-token");
     await signOut(session);
 
     expect(await readSession(session)).toBeNull();

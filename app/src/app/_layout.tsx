@@ -1,9 +1,11 @@
 import { useEffect } from "react";
+import { AppState } from "react-native";
 import { Stack } from "expo-router/stack";
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { openJournal } from "@/journal/open-journal";
+import { syncOnPhone, watchConnection } from "@/journal/phone-sync";
 import { SessionProvider, useSession } from "@/session/session-context";
 import { visibleScreen } from "@/session/session";
 
@@ -19,10 +21,48 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
+        <UploadOnForeground />
         <RootStack />
       </SessionProvider>
     </SafeAreaProvider>
   );
+}
+
+function UploadOnForeground() {
+  const { session, signOut } = useSession();
+
+  useEffect(() => {
+    if (session === null) {
+      return;
+    }
+    let cancelled = false;
+    const run = () => {
+      openJournal()
+        .then((sql) => syncOnPhone(sql, session))
+        .then((result) => {
+          if (!cancelled && result === "signed-out") {
+            return signOut();
+          }
+        })
+        .catch((error: unknown) => {
+          console.warn(error);
+        });
+    };
+    run();
+    const app = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        run();
+      }
+    });
+    const connection = watchConnection(run);
+    return () => {
+      cancelled = true;
+      app.remove();
+      connection.remove();
+    };
+  }, [session, signOut]);
+
+  return null;
 }
 
 function RootStack() {

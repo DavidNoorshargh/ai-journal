@@ -1,11 +1,12 @@
-import { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { AppState, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { listDate } from "@/journal/dates";
 import { entriesForFilter, entryLabel, listEntries, type Entry, type SyncState } from "@/journal/entries";
 import { openJournal } from "@/journal/open-journal";
+import { syncOnPhone, watchConnection } from "@/journal/phone-sync";
 import { TAGS, type Tag } from "@/journal/tags";
 import { useSession } from "@/session/session-context";
 
@@ -18,33 +19,50 @@ const SYNC_LABEL: Record<SyncState, string> = {
 };
 
 export function NotesScreen() {
-  const { signOut } = useSession();
+  const { signOut, session } = useSession();
   const [filter, setFilter] = useState<Filter>("all");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [ready, setReady] = useState(false);
   const visible = entriesForFilter(entries, filter);
+  const reload = useCallback(() => {
+    let cancelled = false;
+    openJournal()
+      .then(async (sql) => {
+        if (session !== null) {
+          const result = await syncOnPhone(sql, session);
+          if (cancelled) {
+            return null;
+          }
+          if (result === "signed-out") {
+            await signOut();
+            return null;
+          }
+        }
+        return listEntries(sql);
+      })
+      .then((rows) => {
+        if (cancelled || rows == null) {
+          return;
+        }
+        setEntries(rows);
+        setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setReady(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, signOut]);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      openJournal()
-        .then((sql) => listEntries(sql))
-        .then((rows) => {
-          if (!cancelled) {
-            setEntries(rows);
-            setReady(true);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setReady(true);
-          }
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, []),
+      return reload();
+    }, [reload]),
   );
+  useUploadTriggers(reload);
 
   return (
     <SafeAreaView style={styles.safe} testID="notes-screen">
@@ -98,23 +116,51 @@ export function NotesScreen() {
             </Text>
           ) : undefined
         }
-        renderItem={({ item }) => (
-          <Pressable
-            testID={`notes-row-${item.id}`}
-            onPress={() => router.push(`/notes/${item.id}`)}
-            style={styles.row}
-          >
-            <View style={styles.rowHeader}>
-              <Text style={styles.date}>{listDate(item.date)}</Text>
-              <Text style={styles.sync}>{SYNC_LABEL[item.syncState]}</Text>
-            </View>
-            <Text style={styles.label}>{entryLabel(item)}</Text>
-            <Text style={styles.rowTags}>{item.tags.join(" ")}</Text>
-          </Pressable>
-        )}
+        renderItem={({ item }) => <NoteRow item={item} onRetry={reload} />}
       />
     </SafeAreaView>
   );
+}
+
+function NoteRow({ item, onRetry }: { item: Entry; onRetry: () => void }) {
+  return (
+    <View style={styles.row}>
+      <Pressable testID={`notes-row-${item.id}`} onPress={() => router.push(`/notes/${item.id}`)}>
+        <View style={styles.rowHeader}>
+          <Text style={styles.date}>{listDate(item.date)}</Text>
+          <Text style={styles.sync}>{SYNC_LABEL[item.syncState]}</Text>
+        </View>
+        <Text style={styles.label}>{entryLabel(item)}</Text>
+        <Text style={styles.rowTags}>{item.tags.join(" ")}</Text>
+      </Pressable>
+      {item.syncState === "failed" ? (
+        <Pressable testID={`notes-retry-${item.id}`} onPress={onRetry} style={styles.retry}>
+          <Text style={styles.retryLabel}>Retry</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function useUploadTriggers(reload: () => () => void) {
+  useEffect(() => {
+    let cancel = () => {};
+    const run = () => {
+      cancel();
+      cancel = reload();
+    };
+    const app = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        run();
+      }
+    });
+    const connection = watchConnection(run);
+    return () => {
+      cancel();
+      app.remove();
+      connection.remove();
+    };
+  }, [reload]);
 }
 
 function TagChip({
@@ -224,6 +270,14 @@ const styles = StyleSheet.create({
   rowTags: {
     fontSize: 13,
     marginTop: 4,
+  },
+  retry: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  retryLabel: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   empty: {
     marginTop: 32,

@@ -123,6 +123,14 @@ export async function updateEntry(sql: Sql, id: string, input: EditedEntry): Pro
   return entry;
 }
 
+export async function markUploaded(sql: Sql, id: string): Promise<Entry> {
+  return setSyncState(sql, id, "uploaded");
+}
+
+export async function markFailed(sql: Sql, id: string): Promise<Entry> {
+  return setSyncState(sql, id, "failed");
+}
+
 export async function deleteEntry(sql: Sql, id: string): Promise<void> {
   const current = await readEntry(sql, id);
   if (current === null) {
@@ -137,6 +145,10 @@ export async function deleteEntry(sql: Sql, id: string): Promise<void> {
 export async function listPendingDeletes(sql: Sql): Promise<string[]> {
   const rows = await sql.all<{ id: string }>("SELECT id FROM pending_deletes ORDER BY id");
   return rows.map((row) => row.id);
+}
+
+export async function clearPendingDelete(sql: Sql, id: string): Promise<void> {
+  await sql.run("DELETE FROM pending_deletes WHERE id = ?", [id]);
 }
 
 export function entryLabel(entry: { title: string; body: string }): string {
@@ -281,20 +293,31 @@ function replacedEntry(current: Entry, input: EditedEntry): Entry {
     title: cleanTitle(input.title),
     body: requireBody(input.body),
     tags: requireTags(input.tags),
+    syncState: "pending",
     updatedAt: (input.now ?? new Date()).toISOString(),
   };
 }
 
 async function updateStoredEntry(sql: Sql, entry: Entry): Promise<void> {
   await sql.run(
-    "UPDATE entries SET date = ?, title = ?, body = ?, updated_at = ? WHERE id = ?",
-    [entry.date, entry.title, entry.body, entry.updatedAt, entry.id],
+    "UPDATE entries SET date = ?, title = ?, body = ?, sync_state = ?, updated_at = ? WHERE id = ?",
+    [entry.date, entry.title, entry.body, entry.syncState, entry.updatedAt, entry.id],
   );
 }
 
 async function replaceTags(sql: Sql, entry: Entry): Promise<void> {
   await sql.run("DELETE FROM entry_tags WHERE entry_id = ?", [entry.id]);
   await insertTags(sql, entry.id, entry.tags);
+}
+
+async function setSyncState(sql: Sql, id: string, syncState: SyncState): Promise<Entry> {
+  const current = await readEntry(sql, id);
+  if (current === null) {
+    throw new Error("Note not found.");
+  }
+  const entry = { ...current, syncState };
+  await sql.run("UPDATE entries SET sync_state = ? WHERE id = ?", [syncState, id]);
+  return entry;
 }
 
 function firstBodyLine(body: string): string {

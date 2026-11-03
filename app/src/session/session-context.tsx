@@ -1,6 +1,7 @@
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { secureSessionStore } from "@/session/secure-session-store";
+import { exchangePassword } from "@/session/cognito";
 import {
   readSession,
   signIn as storeSignIn,
@@ -42,17 +43,20 @@ export function SessionProvider({
     };
   }, [store]);
 
-  async function signIn(email: string, password: string) {
-    await storeSignIn(store, email, password);
-    setSession(await readSession(store));
-    setReady(true);
-  }
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      await storeSignIn(store, email, password, exchangePassword);
+      setSession(await readSession(store));
+      setReady(true);
+    },
+    [store],
+  );
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     await storeSignOut(store);
     setSession(null);
     setReady(true);
-  }
+  }, [store]);
 
   return (
     <SessionContext value={{ ready, session, signIn, signOut }}>

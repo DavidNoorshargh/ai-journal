@@ -1,5 +1,6 @@
 export type Session = {
   email: string;
+  refreshToken: string;
 };
 
 export type SessionStore = {
@@ -33,28 +34,31 @@ export async function readSession(store: SessionStore): Promise<Session | null> 
     return null;
   }
   try {
-    const parsed = JSON.parse(raw) as { email?: unknown };
+    const parsed = JSON.parse(raw) as { email?: unknown; refreshToken?: unknown };
     if (typeof parsed.email !== "string" || parsed.email === "") {
       return null;
     }
-    return { email: parsed.email };
+    if (typeof parsed.refreshToken !== "string" || parsed.refreshToken === "") {
+      return null;
+    }
+    return { email: parsed.email, refreshToken: parsed.refreshToken };
   } catch {
     return null;
   }
 }
 
-// The password is checked for presence and is not stored. Cognito replaces
-// this check when the phone starts calling AWS.
 export async function signIn(
   store: SessionStore,
   email: string,
   password: string,
+  exchange: (email: string, password: string) => Promise<string>,
 ): Promise<void> {
   const trimmed = email.trim();
   if (trimmed === "" || password === "") {
     throw new Error("Email and password are required.");
   }
-  await store.set(SESSION_KEY, JSON.stringify({ email: trimmed }));
+  const refreshToken = await exchange(trimmed, password);
+  await store.set(SESSION_KEY, JSON.stringify({ email: trimmed, refreshToken }));
 }
 
 export async function signOut(store: SessionStore): Promise<void> {

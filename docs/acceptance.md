@@ -217,3 +217,104 @@ Feature: Filter notes by tag
     Then the list says "No entries yet"
     And Write and Ask are shown
 ```
+
+```gherkin
+Feature: Sync state
+
+  A save leaves the note pending. The list shows that as "On the phone".
+  A successful upload marks it uploaded, shown as "Uploaded".
+  A failed upload marks it failed, shown as "Failed", and the note stays on the phone.
+
+  Scenario: A new note is on the phone
+    Given a session is stored
+    When a note is saved
+    Then its sync state is pending
+    And the list says "On the phone"
+
+  Scenario: Editing a note makes it pending again
+    Given a note is uploaded
+    When that note is saved again
+    Then its sync state is pending
+    And the note is still in the list
+
+  Scenario: A successful upload marks the note uploaded
+    Given a note is pending
+    When the upload succeeds
+    Then its sync state is uploaded
+    And the list says "Uploaded"
+
+  Scenario: A failed upload keeps the note
+    Given a note is pending
+    When the upload fails
+    Then its sync state is failed
+    And the note is still in the list
+    And the list says "Failed"
+    And the row offers Retry
+
+  Scenario: Retry uploads the failed note
+    Given a note is failed
+    When Retry is tapped and the upload succeeds
+    Then the list says "Uploaded"
+```
+
+```gherkin
+Feature: Upload
+
+  Saving writes the note on the phone and returns.
+  When the phone is online, both objects are put. An edit puts the same two keys.
+  A delete removes both objects. Until that finishes, the id stays in the pending deletes.
+  Sign-in stores a Cognito refresh token. The password is not stored.
+  An expired session returns to sign-in, and the waiting notes upload after the next sign-in.
+
+  Scenario: An online save is uploaded
+    Given a session is stored
+    And the phone is online
+    When a note is saved
+    Then the markdown and the sidecar are put at entries/{id}
+    And the list says "Uploaded"
+
+  Scenario: An offline save stays on the phone
+    Given the phone is offline
+    When a note is saved
+    Then the note is still in the list
+    And the list says "On the phone"
+
+  Scenario: A delete removes both objects
+    Given a note was uploaded
+    When that note is deleted and the phone is online
+    Then both object keys are deleted
+    And the note is not in the list
+```
+
+```gherkin
+Feature: Entry documents
+
+  A saved note becomes two objects under entries/{id}.
+  The markdown is the note text. A title starts that file as a heading, then the body.
+  The sidecar holds entryId, date, and tags for the Knowledge Base.
+  An edit uses the same two keys. A delete names both keys.
+
+  Scenario: A titled note starts with a heading
+    Given a note titled "River walk" dated 20261028 and tagged "life" and "work"
+    When its documents are built
+    Then the markdown key is "entries/{id}.md"
+    And the markdown is "# River walk" followed by the body
+    And the sidecar key is "entries/{id}.md.metadata.json"
+    And the sidecar metadata is entryId, date, and tags
+
+  Scenario: A blank title is the body alone
+    Given a note with a blank title
+    When its documents are built
+    Then the markdown is the body
+    And the sidecar metadata is entryId, date, and tags
+
+  Scenario: An edit keeps the same keys
+    Given a note has documents
+    When the note is edited and its documents are built again
+    Then both keys are unchanged
+
+  Scenario: A delete names both objects
+    Given a note has documents
+    When that note is deleted
+    Then the delete names the markdown key and the sidecar key
+```
