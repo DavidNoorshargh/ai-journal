@@ -1,8 +1,38 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { askOnPhone } from "@/journal/ask-phone";
+import { useSession } from "@/session/session-context";
+
 export function AskScreen() {
+  const { session, signOut } = useSession();
   const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+
+  async function onSend() {
+    const trimmed = question.trim();
+    if (trimmed === "") {
+      setAnswer(null);
+      return;
+    }
+    if (session === null) {
+      return;
+    }
+    setSending(true);
+    try {
+      const result = await askOnPhone(session, trimmed);
+      if (result === "signed-out") {
+        await signOut();
+        return;
+      }
+      setAnswer(result.answer);
+    } catch {
+      setAnswer("Ask failed.");
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <View style={styles.screen} testID="ask-screen">
@@ -15,10 +45,22 @@ export function AskScreen() {
         style={styles.input}
         textAlignVertical="top"
       />
-      <Pressable testID="ask-send" style={styles.send}>
+      <Pressable testID="ask-send" disabled={sending} onPress={() => void onSend()} style={styles.send}>
         <Text style={styles.sendLabel}>Send</Text>
       </Pressable>
+      <AnswerText answer={answer} />
     </View>
+  );
+}
+
+function AnswerText({ answer }: { answer: string | null }) {
+  if (answer === null) {
+    return null;
+  }
+  return (
+    <Text testID="ask-answer" style={styles.answer}>
+      {answer}
+    </Text>
   );
 }
 
@@ -47,5 +89,9 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  answer: {
+    fontSize: 16,
+    lineHeight: 22,
   },
 });

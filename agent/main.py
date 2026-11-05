@@ -97,8 +97,19 @@ def _unsynced_entry(entry):
         "entryId": entry["id"],
         "date": entry.get("date") or "",
         "tags": require_tags(entry.get("tags")),
-        "text": entry.get("body") or "",
+        "text": _unsynced_text(entry),
     }
+
+
+def _unsynced_text(entry):
+    body = entry.get("body") or ""
+    title = entry.get("title") or ""
+    if not isinstance(title, str):
+        title = ""
+    title = title.strip()
+    if title == "":
+        return body
+    return f"{title}\n{body}"
 
 
 def time_windows(today):

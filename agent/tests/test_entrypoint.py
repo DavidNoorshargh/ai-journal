@@ -37,6 +37,25 @@ def test_question_and_unsynced_entries_are_read():
     ]
 
 
+def test_unsynced_title_is_part_of_the_text():
+    _, unsynced = parse_request(
+        {
+            "question": "lantern",
+            "unsyncedEntries": [
+                {
+                    "id": "local-1",
+                    "date": "20261024",
+                    "tags": [],
+                    "title": "Blue lantern",
+                    "body": "On the table.",
+                }
+            ],
+        }
+    )
+
+    assert unsynced[0]["text"] == "Blue lantern\nOn the table."
+
+
 def test_defined_phrases_are_in_the_prompt():
     model = ScriptedModel({"query": "lantern"}, "The note mentions a lantern.")
 

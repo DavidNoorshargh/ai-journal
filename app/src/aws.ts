@@ -4,4 +4,5 @@ export const aws = {
   clientId: "5t3mjg0hma7g13s2120dgkt7tu",
   identityPoolId: "eu-west-2:2cb354fd-1155-4779-b55d-fec23b4cd1c2",
   bucket: "ai-journal-entries-103074025438",
+  runtimeArn: "arn:aws:bedrock-agentcore:eu-west-2:103074025438:runtime/ai_journal-bw36qL4PiB",
 };

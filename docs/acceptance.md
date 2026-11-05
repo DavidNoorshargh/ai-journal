@@ -318,3 +318,29 @@ Feature: Entry documents
     When that note is deleted
     Then the delete names the markdown key and the sidecar key
 ```
+
+```gherkin
+Feature: Ask
+
+  Ask shows a question, Send, and the answer text.
+  Send calls the agent with the signed-in session.
+  Notes still pending or failed go with the question. Uploaded notes stay in the list and are not attached.
+  An expired session returns to sign-in.
+
+  Scenario: Send shows the agent's answer
+    Given the Ask screen is shown
+    When the question is "Where was the lantern?"
+    And the agent answers
+    Then the answer text is shown
+
+  Scenario: A blank question shows no answer
+    Given the Ask screen is shown
+    When the question is blank
+    And Send is tapped
+    Then no answer is shown
+
+  Scenario: An expired session returns to sign-in
+    Given the Ask screen is shown
+    When Send is tapped and the session has expired
+    Then the sign-in screen is shown
+```

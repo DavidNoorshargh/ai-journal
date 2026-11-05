@@ -20,6 +20,9 @@ type SignedRequest = {
   secretAccessKey: string;
   region: string;
   now: Date;
+  query?: string;
+  service?: string;
+  contentHashHeader?: boolean;
 };
 
 export function s3ObjectStore(credentials: AwsCredentials): ObjectStore {
@@ -35,11 +38,24 @@ export function s3ObjectStore(credentials: AwsCredentials): ObjectStore {
 
 export function authorizationHeader(request: SignedRequest): string {
   const signed = signedRequest(request);
-  const scope = credentialScope(signed.date, request.region);
+  const scope = credentialScope(signed.date, request.region, request.service ?? "s3");
   return (
     `AWS4-HMAC-SHA256 Credential=${request.accessKeyId}/${scope}, ` +
     `SignedHeaders=${signed.names}, Signature=${signed.signature}`
   );
+}
+
+export function authorizedHeaders(request: SignedRequest): Record<string, string> {
+  const headers = signedHeaderValues(
+    request.headers,
+    request.payload,
+    request.now,
+    request.contentHashHeader !== false,
+  );
+  return {
+    ...headers,
+    Authorization: authorizationHeader(request),
+  };
 }
 
 async function sendObject(
@@ -81,39 +97,53 @@ async function sendObject(
 }
 
 function signedRequest(request: SignedRequest) {
+  const service = request.service ?? "s3";
   const stamp = amzTimestamp(request.now);
   const date = stamp.slice(0, 8);
   const payloadHash = sha256Hex(request.payload);
-  const headers = {
+  const headers: Record<string, string> = {
     ...lowerHeaders(request.headers),
     "x-amz-date": stamp,
-    "x-amz-content-sha256": payloadHash,
   };
+  if (request.contentHashHeader !== false) {
+    headers["x-amz-content-sha256"] = payloadHash;
+  }
   const names = Object.keys(headers).sort();
-  const canonical = canonicalRequest(request.method, request.path, headers, names, payloadHash);
-  const scope = credentialScope(date, request.region);
+  const path = canonicalUri(request.path);
+  const canonical = canonicalRequest(request.method, path, request.query ?? "", headers, names, payloadHash);
+  const scope = credentialScope(date, request.region, service);
   const toSign = `AWS4-HMAC-SHA256\n${stamp}\n${scope}\n${sha256Hex(canonical)}`;
-  const signature = bytesToHex(hmac(sha256, signingKey(request.secretAccessKey, date, request.region), utf8ToBytes(toSign)));
+  const key = signingKey(request.secretAccessKey, date, request.region, service);
+  const signature = bytesToHex(hmac(sha256, key, utf8ToBytes(toSign)));
   return { date, names: names.join(";"), signature };
 }
 
-function signedHeaderValues(headers: Record<string, string>, payload: string, now: Date): Record<string, string> {
-  return {
+function signedHeaderValues(
+  headers: Record<string, string>,
+  payload: string,
+  now: Date,
+  contentHashHeader = true,
+): Record<string, string> {
+  const signed: Record<string, string> = {
     ...headers,
     "x-amz-date": amzTimestamp(now),
-    "x-amz-content-sha256": sha256Hex(payload),
   };
+  if (contentHashHeader) {
+    signed["x-amz-content-sha256"] = sha256Hex(payload);
+  }
+  return signed;
 }
 
 function canonicalRequest(
   method: string,
   path: string,
+  query: string,
   headers: Record<string, string>,
   names: string[],
   payloadHash: string,
 ): string {
   const lines = names.map((name) => `${name}:${headers[name].trim()}\n`).join("");
-  return `${method}\n${canonicalUri(path)}\n\n${lines}\n${names.join(";")}\n${payloadHash}`;
+  return `${method}\n${path}\n${query}\n${lines}\n${names.join(";")}\n${payloadHash}`;
 }
 
 function canonicalUri(path: string): string {
@@ -123,14 +153,14 @@ function canonicalUri(path: string): string {
     .join("/");
 }
 
-function credentialScope(date: string, region: string): string {
-  return `${date}/${region}/s3/aws4_request`;
+function credentialScope(date: string, region: string, service: string): string {
+  return `${date}/${region}/${service}/aws4_request`;
 }
 
-function signingKey(secret: string, date: string, region: string): Uint8Array {
+function signingKey(secret: string, date: string, region: string, service: string): Uint8Array {
   const dateKey = hmac(sha256, utf8ToBytes(`AWS4${secret}`), utf8ToBytes(date));
   const regionKey = hmac(sha256, dateKey, utf8ToBytes(region));
-  const serviceKey = hmac(sha256, regionKey, utf8ToBytes("s3"));
+  const serviceKey = hmac(sha256, regionKey, utf8ToBytes(service));
   return hmac(sha256, serviceKey, utf8ToBytes("aws4_request"));
 }
 
