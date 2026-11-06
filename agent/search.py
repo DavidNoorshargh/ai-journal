@@ -6,8 +6,9 @@ TIME_ONLY_LIMIT = 100
 
 
 def search_entries(query, tags=None, start_date=None, end_date=None, *, client=None, knowledge_base_id=None):
-    """Retrieve whole entries for one query. A date range is a metadata filter, applied before ranking.
+    """Retrieve whole entries for one query.
 
+    Date is stored as text, so the index rejects a range filter. The date window is applied to the entries that were retrieved. Tags are still a metadata filter, applied before ranking.
     An empty query with a date range is a time-only search: return the entries in that window.
     """
     query, tags, start_date, end_date = _prepare_search(query, tags, start_date, end_date)
@@ -64,32 +65,14 @@ def _knowledge_base_client(client):
 def _vector_search_configuration(query, tags, start_date, end_date):
     time_only = not query.strip()
     configuration = {"numberOfResults": TIME_ONLY_LIMIT if time_only else RESULTS_LIMIT}
-    metadata_filter = _metadata_filter(tags, start_date, end_date)
+    metadata_filter = _metadata_filter(tags)
     if metadata_filter is not None:
         configuration["filter"] = metadata_filter
     return configuration
 
 
-def _metadata_filter(tags, start_date, end_date):
-    parts = _date_clauses(start_date, end_date)
-    tag_clause = _tag_clause(tags)
-    if tag_clause is not None:
-        parts.append(tag_clause)
-
-    if not parts:
-        return None
-    if len(parts) == 1:
-        return parts[0]
-    return {"andAll": parts}
-
-
-def _date_clauses(start_date, end_date):
-    clauses = []
-    if start_date:
-        clauses.append({"greaterThanOrEquals": {"key": "date", "value": start_date}})
-    if end_date:
-        clauses.append({"lessThanOrEquals": {"key": "date", "value": end_date}})
-    return clauses
+def _metadata_filter(tags):
+    return _tag_clause(tags)
 
 
 def _tag_clause(tags):

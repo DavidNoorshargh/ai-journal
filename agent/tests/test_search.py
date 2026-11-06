@@ -41,15 +41,9 @@ def test_tags_and_date_range_are_a_filter():
     )
 
     assert client.calls[0]["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] == {
-        "andAll": [
-            {"greaterThanOrEquals": {"key": "date", "value": "20261001"}},
-            {"lessThanOrEquals": {"key": "date", "value": "20261024"}},
-            {
-                "orAll": [
-                    {"listContains": {"key": "tags", "value": "thoughts"}},
-                    {"listContains": {"key": "tags", "value": "life"}},
-                ]
-            },
+        "orAll": [
+            {"listContains": {"key": "tags", "value": "thoughts"}},
+            {"listContains": {"key": "tags", "value": "life"}},
         ]
     }
 
@@ -115,18 +109,18 @@ def test_one_day_window_drops_other_days():
     assert [entry["entryId"] for entry in entries] == ["today"]
     vector_search = client.calls[0]["retrievalConfiguration"]["vectorSearchConfiguration"]
     assert vector_search["numberOfResults"] == 100
-    assert vector_search["filter"] == {
-        "andAll": [
-            {"greaterThanOrEquals": {"key": "date", "value": "20261024"}},
-            {"lessThanOrEquals": {"key": "date", "value": "20261024"}},
-        ]
-    }
+    assert "filter" not in vector_search
 
 
 def test_dashed_dates_are_normalized():
-    client = FakeRetrieve([])
+    client = FakeRetrieve(
+        [
+            {"content": {"text": "On the day."}, "metadata": {"entryId": "day", "date": "20261024"}},
+            {"content": {"text": "Other."}, "metadata": {"entryId": "other", "date": "20261023"}},
+        ]
+    )
 
-    search_entries(
+    entries = search_entries(
         "lantern",
         start_date="2026-10-24",
         end_date="2026-10-24",
@@ -134,9 +128,7 @@ def test_dashed_dates_are_normalized():
         knowledge_base_id="kb",
     )
 
-    date_filter = client.calls[0]["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"]
-    assert date_filter["andAll"][0]["greaterThanOrEquals"]["value"] == "20261024"
-    assert date_filter["andAll"][1]["lessThanOrEquals"]["value"] == "20261024"
+    assert [entry["entryId"] for entry in entries] == ["day"]
 
 
 def test_date_range_must_be_ordered():

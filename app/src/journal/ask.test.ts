@@ -27,7 +27,11 @@ describe("invoke agent", () => {
       "askaabbccddeeff00112233445566778899",
       async (url, init) => {
         calls.push({ url, headers: init.headers, body: init.body });
-        return { ok: true, text: async () => JSON.stringify({ answer: "A lantern.", entryIds: ["pending"] }) };
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ answer: "A lantern.", entryIds: ["pending"] }),
+        };
       },
       new Date("2013-05-24T00:00:00Z"),
     );
@@ -52,11 +56,27 @@ describe("invoke agent", () => {
       "askaabbccddeeff00112233445566778899",
       async () => ({
         ok: true,
+        status: 200,
         text: async () => 'data: {"answer":"A lantern.","entryIds":[]}\n\n',
       }),
     );
 
     expect(reply.answer).toBe("A lantern.");
+  });
+
+  it("keeps the status and the runtime message when the call fails", async () => {
+    const reply = invokeAgent(
+      { accessKeyId: "AKID", secretAccessKey: "secret", sessionToken: "token" },
+      askBody("lantern", []),
+      "askaabbccddeeff00112233445566778899",
+      async () => ({
+        ok: false,
+        status: 424,
+        text: async () => '{"message":"Received error (500) from runtime."}',
+      }),
+    );
+
+    await expect(reply).rejects.toThrow("Ask failed (424).");
   });
 });
 

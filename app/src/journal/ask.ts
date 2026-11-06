@@ -22,6 +22,7 @@ export type AgentReply = {
 
 type AgentResponse = {
   ok: boolean;
+  status: number;
   text: () => Promise<string>;
 };
 
@@ -82,10 +83,11 @@ export async function invokeAgent(
     headers: signedHeaders(credentials, payload, path, query, host, sessionId, now),
     body: payload,
   });
+  const text = await response.text();
   if (!response.ok) {
-    throw new Error("Ask failed.");
+    throw new Error(askFailure(response.status, text));
   }
-  return replyFrom(await response.text());
+  return replyFrom(text);
 }
 
 function signedHeaders(
@@ -128,6 +130,14 @@ async function postJson(
   init: { method: string; headers: Record<string, string>; body: string },
 ): Promise<AgentResponse> {
   return fetch(url, init);
+}
+
+function askFailure(status: number, body: string): string {
+  const detail = body.trim().slice(0, 300);
+  if (detail === "") {
+    return `Ask failed (${status}).`;
+  }
+  return `Ask failed (${status}). ${detail}`;
 }
 
 function replyFrom(text: string): AgentReply {

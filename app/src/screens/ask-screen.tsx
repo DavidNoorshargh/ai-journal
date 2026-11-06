@@ -27,8 +27,8 @@ export function AskScreen() {
         return;
       }
       setAnswer(result.answer);
-    } catch {
-      setAnswer("Ask failed.");
+    } catch (error) {
+      setAnswer(askError(error));
     } finally {
       setSending(false);
     }
@@ -51,6 +51,13 @@ export function AskScreen() {
       <AnswerText answer={answer} />
     </View>
   );
+}
+
+function askError(error: unknown): string {
+  if (error instanceof Error && error.message !== "") {
+    return error.message;
+  }
+  return "Ask failed.";
 }
 
 function AnswerText({ answer }: { answer: string | null }) {

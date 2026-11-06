@@ -35,6 +35,7 @@ class _Handler(BaseHTTPRequestHandler):
         except ValueError as exc:
             self._send_json(400, {"error": str(exc)})
         except Exception as exc:
+            _log_invoke_failure(exc)
             self._send_json(500, {"error": type(exc).__name__})
 
     def _send_json(self, status, body):
@@ -47,6 +48,10 @@ class _Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         return
+
+
+def _log_invoke_failure(exc):
+    print(f"invoke failed: {type(exc).__name__}: {exc}", flush=True)
 
 
 def invoke(payload, *, search=None, model=None, today=None):
