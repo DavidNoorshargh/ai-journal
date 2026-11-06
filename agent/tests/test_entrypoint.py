@@ -71,6 +71,10 @@ def test_defined_phrases_are_in_the_prompt():
     assert "this day last month means 20260924" in prompt
     assert "last year means 20250101 through 20251231" in prompt
     assert "Omit startDate and endDate unless the question itself names a time." in prompt
+    assert "Write one short paragraph about what the notes say." in prompt
+    assert "Do not say how many notes matched." in prompt
+    assert "Do not quote the notes, and do not paste their text." in prompt
+    assert "Do not write a thinking block." in prompt
 
 
 def test_search_is_called_once_with_the_model_range():
@@ -104,7 +108,7 @@ def test_search_is_called_once_with_the_model_range():
     assert calls == [("lantern", None, "20261024", "20261024")]
     assert result["entryIds"] == ["fixture-retrieval"]
     assert "invented-id" not in result["answer"]
-    assert "1 entry was returned." in result["answer"]
+    assert "1 entry was returned." not in result["answer"]
     assert "Still on the phone." in model.prompts[0]
 
 
@@ -222,7 +226,62 @@ def test_unsynced_id_can_be_cited_when_the_model_uses_it():
     )
 
     assert result["entryIds"] == ["local-1"]
-    assert "local-1" in result["answer"]
+    assert "local-1" not in result["answer"]
+    assert "still on the phone" in result["answer"]
+
+
+def test_a_thinking_block_is_left_out_of_the_answer():
+    model = ScriptedModel(
+        {"query": "lantern"},
+        "<thinking>The note is about a lantern.</thinking>\nThe note mentions a lantern.",
+    )
+    result = invoke(
+        {"question": "lantern"},
+        search=lambda query, tags=None, start_date=None, end_date=None: [
+            {"entryId": "fixture-retrieval", "date": "20261024", "tags": ["thoughts"], "text": "A lantern."}
+        ],
+        model=model,
+        today=date(2026, 10, 24),
+    )
+
+    assert "<thinking>" not in result["answer"]
+    assert "The note mentions a lantern." in result["answer"]
+
+
+def test_an_entry_count_is_left_out_of_the_answer():
+    model = ScriptedModel(
+        {"query": "lantern"},
+        "The note mentions a lantern. There is 1 entry about the lantern.\n1 entry was returned.",
+    )
+    result = invoke(
+        {"question": "lantern"},
+        search=lambda query, tags=None, start_date=None, end_date=None: [
+            {"entryId": "fixture-retrieval", "date": "20261024", "tags": ["thoughts"], "text": "A lantern."}
+        ],
+        model=model,
+        today=date(2026, 10, 24),
+    )
+
+    assert result["answer"] == "The note mentions a lantern."
+
+
+def test_a_quoted_note_is_left_out_of_the_answer():
+    model = ScriptedModel(
+        {"query": "lantern"},
+        "One note matches. It mentions a lantern.\n> The fixture entry is about a blue paper lantern.",
+    )
+    result = invoke(
+        {"question": "lantern"},
+        search=lambda query, tags=None, start_date=None, end_date=None: [
+            {"entryId": "fixture-retrieval", "date": "20261024", "tags": ["thoughts"], "text": "A lantern."}
+        ],
+        model=model,
+        today=date(2026, 10, 24),
+    )
+
+    assert ">" not in result["answer"]
+    assert "blue paper lantern" not in result["answer"]
+    assert "One note matches." in result["answer"]
 
 
 def test_question_is_required():

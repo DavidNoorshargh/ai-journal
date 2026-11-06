@@ -322,7 +322,10 @@ Feature: Entry documents
 ```gherkin
 Feature: Ask
 
-  Ask shows a question, Send, and the answer text.
+  Ask shows a question, Send, one short paragraph, and a short link for each returned note that is on the phone.
+  The paragraph does not quote the notes, and it does not say how many notes matched.
+  A sentence that is a long copy of a note is left off the summary. The link is where that text lives.
+  While Ask is working, it shows that it is reading the notes and Send cannot be pressed again.
   Send calls the agent with the signed-in session.
   Notes still pending or failed go with the question. Uploaded notes stay in the list and are not attached.
   An expired session returns to sign-in.
@@ -331,7 +334,8 @@ Feature: Ask
     Given the Ask screen is shown
     When the question is "Where was the lantern?"
     And the agent answers
-    Then the answer text is shown
+    Then the summary is shown
+    And each returned note that is on the phone is a short link
 
   Scenario: A blank question shows no answer
     Given the Ask screen is shown

@@ -160,10 +160,13 @@ def _instruction_lines(today):
         "Omit startDate and endDate unless the question itself names a time. Do not copy the dates above into the tool call.",
         "When the question is about a time and not a subject, pass an empty query and that date range so every entry in the window can be returned.",
         "When the question has a subject, rewrite it into a short query. Add the date range only when the question names a time.",
-        "Then list those entries, summarise them, or draw a conclusion from what they say.",
-        "A summary or a conclusion says how many entries were returned.",
-        "Quote entries. Do not infer personality, politics, or mental health unless an entry states it.",
-        "Do not mention an entry id that was not returned or listed below.",
+        "Write one short paragraph about what the notes say.",
+        "Do not say how many notes matched. The screen lists them.",
+        "Do not quote the notes, and do not paste their text.",
+        "Do not write a thinking block.",
+        "Do not paste entry ids, dates, or tags. The screen lists the notes.",
+        "Do not infer personality, politics, or mental health unless an entry states it.",
+        "Do not mention an entry id.",
         f"If the search returns nothing and none of the unsynced entries answer it, say exactly: {EMPTY_ANSWER}",
     ]
 
@@ -264,12 +267,32 @@ def _response(answer, entries, unsynced):
 
 
 def _answer_text(answer, entries, allowed):
-    text = _strip_invented_ids(answer, allowed)
-    if entries:
-        return _ensure_returned_count(text, len(entries))
-    if not text.strip():
+    text = _without_thinking(answer)
+    text = _without_quoted_lines(text)
+    text = _strip_invented_ids(text, allowed)
+    text = _strip_entry_ids(text, allowed)
+    text = _without_entry_counts(text)
+    if not entries and not text.strip():
         return EMPTY_ANSWER
     return text
+
+
+_THINKING = re.compile(r"<thinking>.*?</thinking>", re.DOTALL | re.IGNORECASE)
+
+
+def _without_thinking(text):
+    return _THINKING.sub("", text).strip()
+
+
+def _without_quoted_lines(text):
+    kept = [line for line in text.splitlines() if not line.lstrip().startswith(">")]
+    return "\n".join(kept).strip()
+
+
+def _strip_entry_ids(text, entries):
+    for entry in entries:
+        text = text.replace(entry["entryId"], "")
+    return re.sub(r"[ \t]{2,}", " ", text).strip()
 
 
 def _cited_unsynced(answer, entries, unsynced):
@@ -277,11 +300,16 @@ def _cited_unsynced(answer, entries, unsynced):
     return [entry for entry in unsynced if entry["entryId"] in answer and entry["entryId"] not in known]
 
 
-def _ensure_returned_count(text, count):
-    sentence = "1 entry was returned." if count == 1 else f"{count} entries were returned."
-    if sentence in text:
-        return text.strip()
-    return f"{text.rstrip()}\n{sentence}".strip()
+_RETURNED_COUNT = re.compile(r"\d+ entr(?:y was|ies were) returned\.", re.IGNORECASE)
+_THERE_ARE_ENTRIES = re.compile(r"There (?:is|are) \d+ entr(?:y|ies)\b[^.?!]*[.?!]", re.IGNORECASE)
+
+
+def _without_entry_counts(text):
+    text = _THERE_ARE_ENTRIES.sub("", text)
+    text = _RETURNED_COUNT.sub("", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\n{2,}", "\n", text)
+    return text.strip()
 
 
 def _strip_invented_ids(text, entries):
