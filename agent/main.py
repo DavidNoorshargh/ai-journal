@@ -69,11 +69,12 @@ def invoke(payload, *, search=None, model=None, today=None):
     if requested is None:
         return _response("", [], unsynced)
 
+    start_date, end_date = _search_dates(question, requested)
     entries = search(
         requested.get("query") or "",
         tags=requested.get("tags") or None,
-        start_date=_none_if_blank(requested.get("startDate")),
-        end_date=_none_if_blank(requested.get("endDate")),
+        start_date=start_date,
+        end_date=end_date,
     )
     answer = model.write_answer(prompt, entries)
     return _response(answer, entries, unsynced)
@@ -165,8 +166,9 @@ def _instruction_lines(today):
         f"last week means {last_week[0]} through {last_week[1]}, the previous seven days, not including today.",
         f"this day last month means {same_day[0]}.",
         "Call search_entries once.",
+        "Omit startDate and endDate unless the question itself names a time. Do not copy the dates above into the tool call.",
         "When the question is about a time and not a subject, pass an empty query and that date range so every entry in the window can be returned.",
-        "When the question has a subject, rewrite it into a short query. Include the date range when a time was mentioned.",
+        "When the question has a subject, rewrite it into a short query. Add the date range only when the question names a time.",
         "Then list those entries, summarise them, or draw a conclusion from what they say.",
         "A summary or a conclusion says how many entries were returned.",
         "Quote entries. Do not infer personality, politics, or mental health unless an entry states it.",
@@ -192,6 +194,25 @@ def _requested_search(reply):
     if reply.get("toolName", "search_entries") != "search_entries":
         return None
     return reply.get("toolUse")
+
+
+def _search_dates(question, requested):
+    if not _question_names_a_time(question):
+        return None, None
+    return _none_if_blank(requested.get("startDate")), _none_if_blank(requested.get("endDate"))
+
+
+def _question_names_a_time(question):
+    return _TIME_WORD.search(question) is not None
+
+
+_TIME_WORD = re.compile(
+    r"\b(?:today|yesterday|tomorrow|week|month|year|day|ago|recently|lately|"
+    r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
+    r"january|february|march|april|may|june|july|august|september|october|november|december|"
+    r"(?:19|20)\d{2}|\d{1,2}(?:st|nd|rd|th))\b",
+    re.IGNORECASE,
+)
 
 
 def _none_if_blank(value):

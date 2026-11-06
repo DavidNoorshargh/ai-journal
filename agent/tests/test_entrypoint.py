@@ -70,6 +70,7 @@ def test_defined_phrases_are_in_the_prompt():
     assert "last week means 20261017 through 20261023" in prompt
     assert "this day last month means 20260924" in prompt
     assert "last year means 20250101 through 20251231" in prompt
+    assert "Omit startDate and endDate unless the question itself names a time." in prompt
 
 
 def test_search_is_called_once_with_the_model_range():
@@ -92,7 +93,7 @@ def test_search_is_called_once_with_the_model_range():
     )
     result = invoke(
         {
-            "question": "lantern",
+            "question": "lantern last week",
             "unsyncedEntries": [{"id": "local-1", "date": "20261024", "tags": ["life"], "body": "Still on the phone."}],
         },
         search=search,
@@ -105,6 +106,27 @@ def test_search_is_called_once_with_the_model_range():
     assert "invented-id" not in result["answer"]
     assert "1 entry was returned." in result["answer"]
     assert "Still on the phone." in model.prompts[0]
+
+
+def test_a_question_with_no_time_drops_the_model_dates():
+    calls = []
+
+    def search(query, tags=None, start_date=None, end_date=None):
+        calls.append((query, tags, start_date, end_date))
+        return []
+
+    model = ScriptedModel(
+        {"query": "SDET Interview", "startDate": "20261006", "endDate": "20261006"},
+        "The journal does not contain it.",
+    )
+    invoke(
+        {"question": "What do you think about my SDET Interview"},
+        search=search,
+        model=model,
+        today=date(2026, 11, 6),
+    )
+
+    assert calls == [("SDET Interview", None, None, None)]
 
 
 def test_empty_search_cites_nothing():

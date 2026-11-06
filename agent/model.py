@@ -100,8 +100,14 @@ _SEARCH_TOOL = {
                 "properties": {
                     "query": {"type": "string"},
                     "tags": {"type": "array", "items": {"type": "string"}},
-                    "startDate": {"type": "string", "description": "YYYYMMDD"},
-                    "endDate": {"type": "string", "description": "YYYYMMDD"},
+                    "startDate": {
+                        "type": "string",
+                        "description": "YYYYMMDD. Omit unless the question names a time.",
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "description": "YYYYMMDD. Omit unless the question names a time.",
+                    },
                 },
                 "required": ["query"],
             }
