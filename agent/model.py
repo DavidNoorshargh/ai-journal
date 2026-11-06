@@ -18,7 +18,8 @@ class BedrockModel:
 
     def write_answer(self, prompt, entries):
         if self._tool_use is None:
-            return ""
+            response = self._converse([_user_message(_entries_prompt(prompt, entries))], tools=False)
+            return _parse_converse(response).get("text") or ""
 
         messages = [
             _user_message(prompt),
@@ -28,16 +29,15 @@ class BedrockModel:
         parsed = _parse_converse(self._converse(messages))
         return parsed.get("text") or ""
 
-    def _converse(self, messages):
+    def _converse(self, messages, tools=True):
         if self.client is None:
             import boto3
 
             self.client = boto3.client("bedrock-runtime")
-        return self.client.converse(
-            modelId=self.model_id,
-            messages=messages,
-            toolConfig={"tools": [_SEARCH_TOOL]},
-        )
+        request = {"modelId": self.model_id, "messages": messages}
+        if tools:
+            request["toolConfig"] = {"tools": [_SEARCH_TOOL]}
+        return self.client.converse(**request)
 
 
 def _parse_converse(response):
@@ -73,7 +73,18 @@ def _user_message(text):
 
 
 def _user_tool_result(tool_use_id, entries):
-    body = json.dumps(
+    return {
+        "role": "user",
+        "content": [{"toolResult": {"toolUseId": tool_use_id, "content": [{"text": _entries_json(entries)}]}}],
+    }
+
+
+def _entries_prompt(prompt, entries):
+    return f"{prompt}\n\nEntries returned:\n{_entries_json(entries)}"
+
+
+def _entries_json(entries):
+    return json.dumps(
         [
             {
                 "entryId": entry["entryId"],
@@ -84,10 +95,6 @@ def _user_tool_result(tool_use_id, entries):
             for entry in entries
         ]
     )
-    return {
-        "role": "user",
-        "content": [{"toolResult": {"toolUseId": tool_use_id, "content": [{"text": body}]}}],
-    }
 
 
 _SEARCH_TOOL = {

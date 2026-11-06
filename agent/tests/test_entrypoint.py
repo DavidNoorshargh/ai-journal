@@ -129,6 +129,74 @@ def test_a_question_with_no_time_drops_the_model_dates():
     assert calls == [("SDET Interview", None, None, None)]
 
 
+def test_a_blank_query_searches_the_question():
+    calls = []
+
+    def search(query, tags=None, start_date=None, end_date=None):
+        calls.append((query, tags, start_date, end_date))
+        return []
+
+    invoke(
+        {"question": "SDET Interview"},
+        search=search,
+        model=ScriptedModel({"query": " ", "startDate": "20230101", "endDate": "20261106"}, ""),
+        today=date(2026, 11, 6),
+    )
+
+    assert calls == [("SDET Interview", None, None, None)]
+
+
+def test_a_missing_search_uses_the_question():
+    calls = []
+
+    def search(query, tags=None, start_date=None, end_date=None):
+        calls.append((query, tags, start_date, end_date))
+        return []
+
+    invoke(
+        {"question": "SDET Interview"},
+        search=search,
+        model=ScriptedModel(None, ""),
+        today=date(2026, 11, 6),
+    )
+
+    assert calls == [("SDET Interview", None, None, None)]
+
+
+def test_punctuation_is_not_a_query():
+    calls = []
+
+    def search(query, tags=None, start_date=None, end_date=None):
+        calls.append((query, tags, start_date, end_date))
+        return []
+
+    invoke(
+        {"question": "SDET Interview"},
+        search=search,
+        model=ScriptedModel({"query": "."}, ""),
+        today=date(2026, 11, 6),
+    )
+
+    assert calls == [("SDET Interview", None, None, None)]
+
+
+def test_a_time_only_question_keeps_a_blank_query():
+    calls = []
+
+    def search(query, tags=None, start_date=None, end_date=None):
+        calls.append((query, tags, start_date, end_date))
+        return []
+
+    invoke(
+        {"question": "what happened last week?"},
+        search=search,
+        model=ScriptedModel({"query": "", "startDate": "20261017", "endDate": "20261023"}, ""),
+        today=date(2026, 10, 24),
+    )
+
+    assert calls == [("", None, "20261017", "20261023")]
+
+
 def test_empty_search_cites_nothing():
     model = ScriptedModel({"query": "politics"}, "You seem anxious about politics. See invented-id.")
     result = invoke(

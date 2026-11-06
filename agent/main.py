@@ -55,7 +55,7 @@ def _log_invoke_failure(exc):
 
 
 def invoke(payload, *, search=None, model=None, today=None):
-    """Answer a question. The model may call search_entries once. Entry ids come from that call."""
+    """Answer a question. The model may call search_entries once. A blank search uses the question."""
     question, unsynced = parse_request(payload)
     if search is None:
         search = search_entries
@@ -65,17 +65,8 @@ def invoke(payload, *, search=None, model=None, today=None):
         today = date.today()
 
     prompt = _prompt(question, unsynced, today)
-    requested = _requested_search(model.choose_search(prompt))
-    if requested is None:
-        return _response("", [], unsynced)
-
-    start_date, end_date = _search_dates(question, requested)
-    entries = search(
-        requested.get("query") or "",
-        tags=requested.get("tags") or None,
-        start_date=start_date,
-        end_date=end_date,
-    )
+    query, tags, start_date, end_date = _search_from(question, _requested_search(model.choose_search(prompt)))
+    entries = search(query, tags=tags, start_date=start_date, end_date=end_date)
     answer = model.write_answer(prompt, entries)
     return _response(answer, entries, unsynced)
 
@@ -196,6 +187,19 @@ def _requested_search(reply):
     return reply.get("toolUse")
 
 
+def _search_from(question, requested):
+    """A blank or missing search uses the question. A time-only question keeps the model's dates."""
+    if not isinstance(requested, dict):
+        requested = {}
+    start_date, end_date = _search_dates(question, requested)
+    return (
+        _query_text(question, requested.get("query"), start_date, end_date),
+        requested.get("tags") or None,
+        start_date,
+        end_date,
+    )
+
+
 def _search_dates(question, requested):
     if not _question_names_a_time(question):
         return None, None
@@ -211,6 +215,32 @@ _TIME_WORD = re.compile(
     r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
     r"january|february|march|april|may|june|july|august|september|october|november|december|"
     r"(?:19|20)\d{2}|\d{1,2}(?:st|nd|rd|th))\b",
+    re.IGNORECASE,
+)
+
+
+def _query_text(question, query, start_date, end_date):
+    if _usable_query(query):
+        return query.strip()
+    if (start_date or end_date) and _time_only(question):
+        return ""
+    return question
+
+
+def _usable_query(query):
+    return isinstance(query, str) and any(character.isalnum() for character in query)
+
+
+def _time_only(question):
+    remaining = _TIME_WORD.sub(" ", question)
+    remaining = _BARE_WORD.sub(" ", remaining)
+    return not any(character.isalnum() for character in remaining)
+
+
+_BARE_WORD = re.compile(
+    r"\b(?:what|happened|happen|show|me|the|a|an|about|during|in|on|of|my|"
+    r"entries|entry|notes|note|journal|from|to|please|did|do|i|was|were|is|are|"
+    r"there|any|all|for|it|you|your|think|last|this|next|previous|past|same)\b",
     re.IGNORECASE,
 )
 
