@@ -1,4 +1,6 @@
-# Terraform for infra/ only. Bootstrap stays a one-time local apply.
+# Terraform for infra/. Bootstrap stays a one-time local apply.
+# A pull request and a push to main run pytest or Jest for the paths that changed.
+# Plan waits until those tests pass. An app-only or ingestion-only push does not plan.
 #
 # Before the first apply on main:
 # - Apply infra/bootstrap locally.
@@ -13,6 +15,8 @@ on:
     paths:
       - infra/**
       - agent/**
+      - ingestion/**
+      - app/**
       - .github/workflows/terraform.yml
   push:
     branches:
@@ -20,6 +24,8 @@ on:
     paths:
       - infra/**
       - agent/**
+      - ingestion/**
+      - app/**
       - .github/workflows/terraform.yml
 
 concurrency:
@@ -32,8 +38,52 @@ env:
   TF_VERSION: 1.16.3
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      terraform: ${{ steps.filter.outputs.terraform }}
+      agent: ${{ steps.filter.outputs.agent }}
+      ingestion: ${{ steps.filter.outputs.ingestion }}
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Paths that changed
+        id: filter
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          workflow=false
+          if ! changed="$(git diff --name-only "$BASE_SHA" HEAD)"; then
+            changed=""
+            workflow=true
+          fi
+          if printf '%s\n' "$changed" | grep -Eq '^\.github/workflows/terraform\.yml$'; then
+            workflow=true
+          fi
+          flag() {
+            if [ "$workflow" = true ] || printf '%s\n' "$changed" | grep -Eq "$2"; then
+              echo "$1=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$1=false" >> "$GITHUB_OUTPUT"
+            fi
+          }
+          flag agent '^agent/'
+          flag ingestion '^ingestion/'
+          flag app '^app/'
+          if [ "$workflow" = true ] || printf '%s\n' "$changed" | grep -Eq '^(infra/|agent/)'; then
+            echo "terraform=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "terraform=false" >> "$GITHUB_OUTPUT"
+          fi
+
   validate:
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,8 +114,75 @@ jobs:
           terraform init -input=false
           terraform validate
 
+  pytest-agent:
+    needs: changes
+    if: needs.changes.outputs.agent == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Pytest
+        working-directory: agent
+        run: |
+          python -m pip install pytest
+          python -m pytest
+
+  pytest-ingestion:
+    needs: changes
+    if: needs.changes.outputs.ingestion == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Pytest
+        working-directory: ingestion
+        run: |
+          python -m pip install pytest
+          python -m pytest
+
+  jest:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Jest
+        working-directory: app
+        run: |
+          npm ci
+          npm test
+
   plan:
-    if: github.event_name == 'push'
+    needs: [changes, pytest-agent, pytest-ingestion, jest]
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.terraform == 'true' &&
+      contains(fromJSON('["success","skipped"]'), needs.pytest-agent.result) &&
+      contains(fromJSON('["success","skipped"]'), needs.pytest-ingestion.result) &&
+      contains(fromJSON('["success","skipped"]'), needs.jest.result)
     runs-on: ubuntu-latest
     permissions:
       id-token: write
