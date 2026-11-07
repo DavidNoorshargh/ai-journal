@@ -9,6 +9,7 @@ class BedrockModel:
         self.client = client
         self.model_id = model_id or os.environ.get("MODEL_ID")
         self._tool_use = None
+        self.cited_ids = []
 
     def choose_search(self, prompt):
         parsed = _parse_converse(self._converse([_user_message(prompt)]))
@@ -17,25 +18,19 @@ class BedrockModel:
         return parsed
 
     def write_answer(self, prompt, entries):
-        if self._tool_use is None:
-            response = self._converse([_user_message(_entries_prompt(prompt, entries))], tools=False)
-            return _parse_converse(response).get("text") or ""
+        parsed = _parse_converse(self._converse(_answer_messages(prompt, entries, self._tool_use), summary=True))
+        self.cited_ids = _cited_ids(parsed)
+        return _summary_text(parsed)
 
-        messages = [
-            _user_message(prompt),
-            {"role": "assistant", "content": [{"toolUse": self._tool_use["raw"]}]},
-            _user_tool_result(self._tool_use["toolUseId"], entries),
-        ]
-        parsed = _parse_converse(self._converse(messages))
-        return parsed.get("text") or ""
-
-    def _converse(self, messages, tools=True):
+    def _converse(self, messages, tools=True, summary=False):
         if self.client is None:
             import boto3
 
             self.client = boto3.client("bedrock-runtime")
         request = {"modelId": self.model_id, "messages": messages}
-        if tools:
+        if summary:
+            request["toolConfig"] = _SUMMARY_CONFIG
+        elif tools:
             request["toolConfig"] = {"tools": [_SEARCH_TOOL]}
         return self.client.converse(**request)
 
@@ -68,6 +63,30 @@ def _tool_use_reply(tool):
     }
 
 
+def _answer_messages(prompt, entries, search_use):
+    if search_use is None:
+        return [_user_message(_entries_prompt(prompt, entries))]
+    return [
+        _user_message(prompt),
+        {"role": "assistant", "content": [{"toolUse": search_use["raw"]}]},
+        _user_tool_result(search_use["toolUseId"], entries),
+    ]
+
+
+def _summary_text(parsed):
+    summary = (parsed.get("toolUse") or {}).get("summary")
+    if isinstance(summary, str) and summary.strip():
+        return summary.strip()
+    return parsed.get("text") or ""
+
+
+def _cited_ids(parsed):
+    raw = (parsed.get("toolUse") or {}).get("entryIds")
+    if not isinstance(raw, list):
+        return []
+    return [entry_id for entry_id in raw if isinstance(entry_id, str)]
+
+
 def _user_message(text):
     return {"role": "user", "content": [{"text": text}]}
 
@@ -97,6 +116,30 @@ def _entries_json(entries):
     )
 
 
+_SUMMARY_TOOL = {
+    "toolSpec": {
+        "name": "write_summary",
+        "description": "Return the one-paragraph summary of the notes that were found.",
+        "inputSchema": {
+            "json": {
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": "One short paragraph about what the notes say. Do not paste the note text, ids, dates, tags, or a count.",
+                    },
+                    "entryIds": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Ids of unsynced notes used in the summary. Omit every other id.",
+                    },
+                },
+                "required": ["summary"],
+            }
+        },
+    }
+}
+
 _SEARCH_TOOL = {
     "toolSpec": {
         "name": "search_entries",
@@ -120,4 +163,9 @@ _SEARCH_TOOL = {
             }
         },
     }
+}
+
+_SUMMARY_CONFIG = {
+    "tools": [_SEARCH_TOOL, _SUMMARY_TOOL],
+    "toolChoice": {"tool": {"name": "write_summary"}},
 }

@@ -68,7 +68,7 @@ def invoke(payload, *, search=None, model=None, today=None):
     query, tags, start_date, end_date = _search_from(question, _requested_search(model.choose_search(prompt)))
     entries = search(query, tags=tags, start_date=start_date, end_date=end_date)
     answer = model.write_answer(prompt, entries)
-    return _response(answer, entries, unsynced)
+    return _response(answer, entries, unsynced, getattr(model, "cited_ids", []))
 
 
 def parse_request(payload):
@@ -254,8 +254,9 @@ def _none_if_blank(value):
     return value
 
 
-def _response(answer, entries, unsynced):
+def _response(answer, entries, unsynced, cited_ids):
     cited = _cited_unsynced(answer, entries, unsynced)
+    cited += _named_unsynced(unsynced, entries, cited_ids, cited)
     if not entries and not cited:
         return {"answer": EMPTY_ANSWER, "entryIds": []}
 
@@ -272,6 +273,7 @@ def _answer_text(answer, entries, allowed):
     text = _strip_invented_ids(text, allowed)
     text = _strip_entry_ids(text, allowed)
     text = _without_entry_counts(text)
+    text = _without_copied_sentences(text, allowed)
     if not entries and not text.strip():
         return EMPTY_ANSWER
     return text
@@ -300,6 +302,20 @@ def _cited_unsynced(answer, entries, unsynced):
     return [entry for entry in unsynced if entry["entryId"] in answer and entry["entryId"] not in known]
 
 
+def _named_unsynced(unsynced, entries, cited_ids, already):
+    known = {entry["entryId"] for entry in entries}
+    seen = {entry["entryId"] for entry in already}
+    by_id = {entry["entryId"]: entry for entry in unsynced}
+    named = []
+    for entry_id in cited_ids or []:
+        entry = by_id.get(entry_id)
+        if entry is None or entry_id in known or entry_id in seen:
+            continue
+        named.append(entry)
+        seen.add(entry_id)
+    return named
+
+
 _RETURNED_COUNT = re.compile(r"\d+ entr(?:y was|ies were) returned\.", re.IGNORECASE)
 _THERE_ARE_ENTRIES = re.compile(r"There (?:is|are) \d+ entr(?:y|ies)\b[^.?!]*[.?!]", re.IGNORECASE)
 
@@ -310,6 +326,48 @@ def _without_entry_counts(text):
     text = re.sub(r"[ \t]{2,}", " ", text)
     text = re.sub(r"\n{2,}", "\n", text)
     return text.strip()
+
+
+_LONG_COPY = 60
+
+
+def _without_copied_sentences(text, entries):
+    notes = [_plain(entry.get("text") or "") for entry in entries]
+    notes = [note for note in notes if note]
+    kept = [sentence for sentence in _sentences(text) if not _copies_a_note(sentence, notes)]
+    return " ".join(kept).strip()
+
+
+def _sentences(text):
+    parts = re.split(r"\n+|(?<=[.!?])\s+", text.strip())
+    return [part.strip() for part in parts if part.strip()]
+
+
+def _copies_a_note(sentence, notes):
+    plain = _plain(sentence)
+    for note in notes:
+        if len(note) >= 20 and note in plain:
+            return True
+        if len(plain) >= _LONG_COPY and plain in note:
+            return True
+        if _shares_long_span(plain, note):
+            return True
+    return False
+
+
+def _shares_long_span(sentence, note):
+    if len(sentence) < _LONG_COPY or len(note) < _LONG_COPY:
+        return False
+    for start in range(0, len(note) - _LONG_COPY + 1, 20):
+        if note[start : start + _LONG_COPY] in sentence:
+            return True
+    return False
+
+
+def _plain(text):
+    text = text.lower()
+    text = re.sub(r"[\"'`“”‘’]", "", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _strip_invented_ids(text, entries):

@@ -13,10 +13,10 @@ def search_entries(query, tags=None, start_date=None, end_date=None, *, client=N
     """
     query, tags, start_date, end_date = _prepare_search(query, tags, start_date, end_date)
     results = _retrieve(query, tags, start_date, end_date, client, knowledge_base_id)
-    entries = _whole_entries(results)
-    if not (start_date or end_date):
-        return entries
-    return [entry for entry in entries if _date_in_window(entry.get("date") or "", start_date, end_date)]
+    entries = _entries_in_window(_whole_entries(results), start_date, end_date)
+    if query.strip():
+        entries = _close_to_the_best(entries)
+    return _without_scores(entries)
 
 
 def require_tags(tags):
@@ -91,11 +91,13 @@ def _whole_entries(results):
         if not entry_id:
             continue
         text = ((result.get("content") or {}).get("text")) or ""
+        score = _result_score(result)
         if entry_id not in entries:
-            entries[entry_id] = _new_entry(entry_id, result.get("metadata") or {}, text)
+            entries[entry_id] = _new_entry(entry_id, result.get("metadata") or {}, text, score)
             order.append(entry_id)
             continue
         _append_entry_text(entries[entry_id], text)
+        _keep_higher_score(entries[entry_id], score)
     return [entries[entry_id] for entry_id in order]
 
 
@@ -104,13 +106,49 @@ def _result_entry_id(result):
     return metadata.get("entryId") or _entry_id_from_location(result.get("location") or {})
 
 
-def _new_entry(entry_id, metadata, text):
+def _new_entry(entry_id, metadata, text, score):
     return {
         "entryId": entry_id,
         "date": metadata.get("date") or "",
         "tags": _metadata_tags(metadata.get("tags")),
         "text": text,
+        "score": score,
     }
+
+
+def _result_score(result):
+    score = result.get("score")
+    if isinstance(score, (int, float)):
+        return float(score)
+    return 0.0
+
+
+def _keep_higher_score(entry, score):
+    if score > entry["score"]:
+        entry["score"] = score
+
+
+def _entries_in_window(entries, start_date, end_date):
+    if not (start_date or end_date):
+        return entries
+    return [entry for entry in entries if _date_in_window(entry.get("date") or "", start_date, end_date)]
+
+
+def _close_to_the_best(entries):
+    if not entries:
+        return []
+    best = max(entry["score"] for entry in entries)
+    floor = best * 4 / 5
+    return [entry for entry in entries if entry["score"] >= floor]
+
+
+def _without_scores(entries):
+    shown = []
+    for entry in entries:
+        copy = dict(entry)
+        copy.pop("score", None)
+        shown.append(copy)
+    return shown
 
 
 def _append_entry_text(entry, text):

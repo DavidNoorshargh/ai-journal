@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { Easing, FadeIn, useReducedMotion } from "react-native-reanimated";
 
+import { messageForAskFailure } from "@/journal/ask-failure";
 import { askOnPhone } from "@/journal/ask-phone";
 import type { CitedNote } from "@/journal/citations";
 import { useSession } from "@/session/session-context";
@@ -33,8 +34,8 @@ export function AskScreen() {
       }
       setAnswer(result.answer);
       setCitations(result.citations);
-    } catch (error) {
-      setAnswer(askError(error));
+    } catch {
+      setAnswer(messageForAskFailure());
       setCitations([]);
     } finally {
       setSending(false);
@@ -71,13 +72,6 @@ export function AskScreen() {
   );
 }
 
-function askError(error: unknown): string {
-  if (error instanceof Error && error.message !== "") {
-    return error.message;
-  }
-  return "Ask failed.";
-}
-
 function AskResult({
   sending,
   answer,
@@ -90,7 +84,7 @@ function AskResult({
   if (sending) {
     return <Reading />;
   }
-  if (answer === null) {
+  if (answer === null || (answer.trim() === "" && citations.length === 0)) {
     return null;
   }
   return (
@@ -140,7 +134,7 @@ function Reading() {
 }
 
 function AnswerText({ answer }: { answer: string | null }) {
-  if (answer === null) {
+  if (answer === null || answer.trim() === "") {
     return null;
   }
   return (

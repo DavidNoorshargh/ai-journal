@@ -329,6 +329,7 @@ Feature: Ask
   Send calls the agent with the signed-in session.
   Notes still pending or failed go with the question. Uploaded notes stay in the list and are not attached.
   An expired session returns to sign-in.
+  With no connection, or when the agent call fails, Ask says that asking needs a connection and that notes on the phone still open and save.
 
   Scenario: Send shows the agent's answer
     Given the Ask screen is shown
@@ -342,6 +343,16 @@ Feature: Ask
     When the question is blank
     And Send is tapped
     Then no answer is shown
+
+  Scenario: No connection explains that asking needs a connection
+    Given the Ask screen is shown
+    When Send is tapped and the phone has no connection
+    Then the screen says "Asking needs a connection. Notes on this phone still open and save."
+
+  Scenario: A failed agent call uses the same explanation
+    Given the Ask screen is shown
+    When Send is tapped and the agent call fails
+    Then the screen says "Asking needs a connection. Notes on this phone still open and save."
 
   Scenario: An expired session returns to sign-in
     Given the Ask screen is shown

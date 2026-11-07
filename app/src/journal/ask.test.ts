@@ -1,5 +1,8 @@
 import { aws } from "@/aws";
 import { askBody, invokeAgent } from "@/journal/ask";
+import { askNeedsConnection } from "@/journal/ask-failure";
+import { askOnPhone } from "@/journal/ask-phone";
+import type { Session } from "@/session/session";
 import type { Entry } from "@/journal/entries";
 
 describe("ask body", () => {
@@ -77,6 +80,15 @@ describe("invoke agent", () => {
     );
 
     await expect(reply).rejects.toThrow("Ask failed (424).");
+  });
+});
+
+describe("ask when the phone is offline", () => {
+  it("does not call the agent and says that asking needs a connection", async () => {
+    const session: Session = { email: "journal@example.com", refreshToken: "refresh" };
+    const reply = askOnPhone(session, "lantern", async () => false);
+
+    await expect(reply).rejects.toThrow(askNeedsConnection);
   });
 });
 

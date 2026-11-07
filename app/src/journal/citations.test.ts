@@ -32,6 +32,15 @@ describe("cited notes", () => {
     expect(visibleAnswer("One note matches.\n> The whole note.")).toBe("One note matches.");
   });
 
+  it("leaves a long copy of a note out of the summary", () => {
+    const note = {
+      ...interview,
+      body: "Today I had an initial interview with a company called MillTech for an SDET role and the salary was low.",
+    };
+    const answer = `You were overqualified for the role. ${note.body}`;
+    expect(visibleAnswer(answer, [note])).toBe("You were overqualified for the role.");
+  });
+
   it("leaves the entry count out of the summary", () => {
     const answer = "The note records an interview. There is 1 entry about your interview today.\n1 entry was returned.";
     expect(visibleAnswer(answer)).toBe("The note records an interview.");

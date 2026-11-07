@@ -131,6 +131,48 @@ def test_dashed_dates_are_normalized():
     assert [entry["entryId"] for entry in entries] == ["day"]
 
 
+def test_a_subject_search_drops_a_note_far_from_the_best_score():
+    client = FakeRetrieve(
+        [
+            hit("interview", 0.80, "The interview."),
+            hit("close", 0.70, "Still about the interview."),
+            hit("lantern", 0.55, "A blue paper lantern."),
+        ]
+    )
+
+    entries = search_entries("SDET interview", client=client, knowledge_base_id="kb")
+
+    assert [entry["entryId"] for entry in entries] == ["interview", "close"]
+    assert "score" not in entries[0]
+
+
+def test_a_time_only_search_keeps_a_weak_score():
+    client = FakeRetrieve(
+        [
+            hit("interview", 0.80, "The interview.", "20261106"),
+            hit("lantern", 0.20, "A blue paper lantern.", "20261024"),
+        ]
+    )
+
+    entries = search_entries(
+        "",
+        start_date="20261001",
+        end_date="20261106",
+        client=client,
+        knowledge_base_id="kb",
+    )
+
+    assert [entry["entryId"] for entry in entries] == ["interview", "lantern"]
+
+
 def test_date_range_must_be_ordered():
     with pytest.raises(ValueError):
         search_entries("lantern", start_date="20261024", end_date="20261001", client=FakeRetrieve([]), knowledge_base_id="kb")
+
+
+def hit(entry_id, score, text, entry_date="20261106"):
+    return {
+        "score": score,
+        "content": {"text": text},
+        "metadata": {"entryId": entry_id, "date": entry_date, "tags": ["thoughts"]},
+    }

@@ -284,6 +284,39 @@ def test_a_quoted_note_is_left_out_of_the_answer():
     assert "One note matches." in result["answer"]
 
 
+def test_a_copied_note_is_left_out_of_the_summary():
+    note = "Today I had an initial interview with a company called MillTech for an SDET role and the salary was low."
+    model = ScriptedModel({"query": "interview"}, f"You were overqualified for the role. {note}")
+    result = invoke(
+        {"question": "interview"},
+        search=lambda query, tags=None, start_date=None, end_date=None: [
+            {"entryId": "note-1", "date": "20261106", "tags": ["work"], "text": note}
+        ],
+        model=model,
+        today=date(2026, 11, 6),
+    )
+
+    assert result["answer"] == "You were overqualified for the role."
+    assert result["entryIds"] == ["note-1"]
+
+
+def test_a_schema_id_cites_an_unsynced_note_and_ignores_an_invented_one():
+    model = ScriptedModel({"query": "phone"}, "It is still only on the phone.")
+    model.cited_ids = ["local-1", "invented-id"]
+    result = invoke(
+        {
+            "question": "what did I just write?",
+            "unsyncedEntries": [{"id": "local-1", "date": "20261024", "tags": ["life"], "body": "Still on the phone."}],
+        },
+        search=lambda query, tags=None, start_date=None, end_date=None: [],
+        model=model,
+        today=date(2026, 10, 24),
+    )
+
+    assert result["entryIds"] == ["local-1"]
+    assert "invented-id" not in result["answer"]
+
+
 def test_question_is_required():
     with pytest.raises(ValueError):
         invoke({"unsyncedEntries": []}, search=lambda **kwargs: [], model=ScriptedModel({"query": "x"}, ""))

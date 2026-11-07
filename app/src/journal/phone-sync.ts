@@ -22,7 +22,7 @@ export function watchConnection(onOnline: () => void): { remove: () => void } {
   });
 }
 
-async function phoneIsOnline(): Promise<boolean> {
+export async function phoneIsOnline(): Promise<boolean> {
   const state = await getNetworkStateAsync();
   return state.isConnected === true && state.isInternetReachable !== false;
 }
