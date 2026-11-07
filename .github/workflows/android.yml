@@ -1,0 +1,36 @@
+# Started by hand from the Actions tab. A normal push does not run this.
+# EXPO_TOKEN is an Expo access token stored as a GitHub secret.
+# The APK stays on EAS. This does not submit to a store.
+
+name: Android app
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build an installable Android app
+        run: eas build --platform android --profile preview --non-interactive --no-wait

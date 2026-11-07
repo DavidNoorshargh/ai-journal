@@ -125,7 +125,7 @@ flowchart LR
 
 6.1 On a pull request and on a push to `main`, run pytest for [agent/](agent/) and the ingestion Lambda, and Jest for [app/](app/), for the paths that changed. A push that also changes infra or the agent plans only after those tests pass. Building and publishing the agent zip stays in step 2.3.
 6.2 Already covered by step 2.3. Apply uploads the agent zip to the artifacts bucket and points the AgentCore runtime at that object. Approval on `production` is already required, and the deploy role already has the permissions for those resources.
-6.3 A `workflow_dispatch` workflow builds an installable app with EAS. The Expo token is a GitHub secret. App Store and Play Store submission stay out of v1.
+6.3 A `workflow_dispatch` workflow builds an installable Android APK with EAS and leaves the file on EAS. It does not run on a normal push. The Expo token is the GitHub secret `EXPO_TOKEN`. App Store and Play Store submission stay out of v1.
 
 ### 7. Later passes
 
