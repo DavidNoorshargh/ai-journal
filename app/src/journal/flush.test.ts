@@ -31,6 +31,12 @@ function memoryStore(failOn?: string): ObjectStore & { objects: Map<string, stri
       removed.push(key);
       objects.delete(key);
     },
+    async list(prefix) {
+      return [...objects.keys()].filter((key) => key.startsWith(prefix));
+    },
+    async get(key) {
+      return objects.get(key) ?? null;
+    },
   };
 }
 

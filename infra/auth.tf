@@ -104,7 +104,7 @@ data "aws_iam_policy_document" "entries_write_assume" {
 resource "aws_iam_role" "entries_write" {
   name               = "${var.project_name}-entries-write"
   assume_role_policy = data.aws_iam_policy_document.entries_write_assume.json
-  description        = "Temporary credentials for the signed-in journal user. Put and delete under entries/, and invoke the journal agent."
+  description        = "Temporary credentials for the signed-in journal user. Read, put, and delete under entries/, and invoke the journal agent."
 }
 
 data "aws_iam_policy_document" "entries_write" {
@@ -116,6 +116,26 @@ data "aws_iam_policy_document" "entries_write" {
       "s3:DeleteObject",
     ]
     resources = ["${aws_s3_bucket.entries.arn}/entries/*"]
+  }
+
+  statement {
+    sid       = "ReadEntries"
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.entries.arn}/entries/*"]
+  }
+
+  statement {
+    sid       = "ListEntries"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.entries.arn]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["entries/", "entries/*"]
+    }
   }
 
   statement {

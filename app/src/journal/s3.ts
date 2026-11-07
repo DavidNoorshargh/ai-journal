@@ -33,6 +33,12 @@ export function s3ObjectStore(credentials: AwsCredentials): ObjectStore {
     remove(key) {
       return sendObject("DELETE", key, "", credentials);
     },
+    list(prefix) {
+      return listObjects(prefix, credentials);
+    },
+    get(key) {
+      return readObject(key, credentials);
+    },
   };
 }
 
@@ -64,18 +70,69 @@ async function sendObject(
   text: string,
   credentials: AwsCredentials,
 ): Promise<void> {
+  const extra: Record<string, string> = {};
+  if (text !== "") {
+    extra["content-type"] = contentType(key);
+  }
+  const response = await signedFetch(method, `/${key}`, "", text, extra, credentials);
+  if (!response.ok) {
+    throw new Error(`Upload failed (${response.status}).`);
+  }
+}
+
+async function readObject(key: string, credentials: AwsCredentials): Promise<string | null> {
+  const response = await signedFetch("GET", `/${key}`, "", "", {}, credentials);
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Download failed (${response.status}).`);
+  }
+  return response.text();
+}
+
+async function listObjects(prefix: string, credentials: AwsCredentials): Promise<string[]> {
+  const keys: string[] = [];
+  let token = "";
+  do {
+    const page = await listPage(prefix, token, credentials);
+    keys.push(...page.keys);
+    token = page.next;
+  } while (token !== "");
+  return keys;
+}
+
+async function listPage(
+  prefix: string,
+  token: string,
+  credentials: AwsCredentials,
+): Promise<{ keys: string[]; next: string }> {
+  const response = await signedFetch("GET", "/", listQuery(prefix, token), "", {}, credentials);
+  if (!response.ok) {
+    throw new Error(`Download failed (${response.status}).`);
+  }
+  const xml = await response.text();
+  return { keys: listedKeys(xml), next: nextPage(xml) };
+}
+
+async function signedFetch(
+  method: string,
+  path: string,
+  query: string,
+  text: string,
+  extra: Record<string, string>,
+  credentials: AwsCredentials,
+): Promise<Response> {
   const now = new Date();
-  const path = `/${key}`;
   const headers: Record<string, string> = {
     host: `${aws.bucket}.s3.${aws.region}.amazonaws.com`,
     "x-amz-security-token": credentials.sessionToken,
+    ...extra,
   };
-  if (text !== "") {
-    headers["content-type"] = contentType(key);
-  }
   const authorization = authorizationHeader({
     method,
     path,
+    query,
     headers,
     payload: text,
     accessKeyId: credentials.accessKeyId,
@@ -83,7 +140,8 @@ async function sendObject(
     region: aws.region,
     now,
   });
-  const response = await fetch(`https://${headers.host}${canonicalUri(path)}`, {
+  const url = `https://${headers.host}${canonicalUri(path)}${query === "" ? "" : `?${query}`}`;
+  return fetch(url, {
     method,
     headers: {
       ...signedHeaderValues(headers, text, now),
@@ -91,9 +149,42 @@ async function sendObject(
     },
     body: text === "" ? undefined : text,
   });
-  if (!response.ok) {
-    throw new Error(`Upload failed (${response.status}).`);
+}
+
+function listQuery(prefix: string, token: string): string {
+  const params: [string, string][] = [
+    ["list-type", "2"],
+    ["prefix", prefix],
+  ];
+  if (token !== "") {
+    params.push(["continuation-token", token]);
   }
+  return params
+    .map(([name, value]) => [encodeURIComponent(name), encodeURIComponent(value)] as [string, string])
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([name, value]) => `${name}=${value}`)
+    .join("&");
+}
+
+function listedKeys(xml: string): string[] {
+  return [...xml.matchAll(/<Key>([^<]*)<\/Key>/g)].map((match) => decodeXml(match[1]));
+}
+
+function nextPage(xml: string): string {
+  if (!xml.includes("<IsTruncated>true</IsTruncated>")) {
+    return "";
+  }
+  const token = xml.match(/<NextContinuationToken>([^<]*)<\/NextContinuationToken>/);
+  return token === null ? "" : decodeXml(token[1]);
+}
+
+function decodeXml(value: string): string {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'");
 }
 
 function signedRequest(request: SignedRequest) {
