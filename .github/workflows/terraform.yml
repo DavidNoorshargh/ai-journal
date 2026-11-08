@@ -239,7 +239,7 @@ jobs:
 
   apply:
     needs: plan
-    if: github.event_name == 'push'
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
     environment: production
     permissions:
