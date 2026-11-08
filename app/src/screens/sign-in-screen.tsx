@@ -42,6 +42,7 @@ export function SignInScreen() {
           autoCorrect={false}
           keyboardType="email-address"
           placeholder="Email"
+          placeholderTextColor="#5c5c5c"
           style={styles.input}
           textContentType="username"
         />
@@ -52,6 +53,7 @@ export function SignInScreen() {
           autoCapitalize="none"
           autoComplete="current-password"
           placeholder="Password"
+          placeholderTextColor="#5c5c5c"
           secureTextEntry
           style={styles.input}
           textContentType="password"
@@ -93,6 +95,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#cccccc",
     borderRadius: 8,
+    color: "#111111",
     fontSize: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,

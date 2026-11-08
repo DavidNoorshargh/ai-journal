@@ -55,6 +55,7 @@ export function AskScreen() {
         onChangeText={setQuestion}
         multiline
         placeholder="Ask about your notes"
+        placeholderTextColor="#5c5c5c"
         style={styles.input}
         textAlignVertical="top"
         editable={!sending}
@@ -163,6 +164,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     borderRadius: 8,
     borderWidth: 1,
+    color: "#111111",
     fontSize: 16,
     minHeight: 120,
     paddingHorizontal: 12,

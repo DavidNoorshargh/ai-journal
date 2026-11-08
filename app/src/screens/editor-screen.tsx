@@ -80,6 +80,7 @@ function NoteFields({
         value={title}
         onChangeText={onTitle}
         placeholder="Title"
+        placeholderTextColor="#5c5c5c"
         style={styles.input}
       />
       <TextInput testID="editor-date" value={date} onChangeText={onDate} style={styles.input} />
@@ -89,6 +90,7 @@ function NoteFields({
         onChangeText={onBody}
         multiline
         placeholder="Write a note"
+        placeholderTextColor="#5c5c5c"
         style={[styles.input, styles.body]}
         textAlignVertical="top"
       />
@@ -292,6 +294,7 @@ const styles = StyleSheet.create({
     borderColor: "#cccccc",
     borderRadius: 8,
     borderWidth: 1,
+    color: "#111111",
     fontSize: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,
