@@ -5,6 +5,7 @@
   },
   "build": {
     "preview": {
+      "autoIncrement": true,
       "distribution": "internal",
       "android": {
         "buildType": "apk"
