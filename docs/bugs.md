@@ -4,7 +4,7 @@ Open items seen on the phone. One stays open until it is checked on a new instal
 
 ## 1. The keyboard covers the note being written
 
-In the app, waiting for a new Android install. Seen on Android, on the Write screen, on 10 Nov 2026.
+Fixed. Checked on the Android install on 10 Nov 2026. Seen on the Write screen.
 
 Once the note is long enough for the caret to meet the keyboard, the keyboard covers the line being typed. The tags and Save sit below the field, so they are covered too. The screen does not shrink, and it does not scroll the caret into the open space above the keyboard.
 
@@ -16,4 +16,4 @@ Write uses `KeyboardAwareScrollView` instead of `ScrollView`. The caret stays 24
 
 Leave the Android window mode as it is. Do not set `softwareKeyboardLayoutMode` to `pan`, and do not pad the screen from a keyboard listener. The keyboard moves on its own curve, and a timed padding change lags behind it.
 
-The library is native, so it appears on the next Android build.
+Checked on the phone. A long note keeps the caret above the keyboard.
