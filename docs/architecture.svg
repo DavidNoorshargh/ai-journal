@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 360" role="img" aria-labelledby="title">
+  <title id="title">Architecture of the journal stack</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1a1a1a"/>
+    </marker>
+  </defs>
+  <rect width="1040" height="360" fill="#ffffff"/>
+  <g font-family="ui-sans-serif, system-ui, sans-serif" fill="#1a1a1a">
+    <rect x="24" y="12" width="300" height="176" rx="12" fill="#f4f5f7"/>
+    <text x="40" y="32" font-size="13" font-weight="600">Phone</text>
+    <rect x="40" y="44" width="268" height="46" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="174" y="72" text-anchor="middle" font-size="14">Expo app</text>
+    <rect x="40" y="106" width="126" height="44" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="103" y="133" text-anchor="middle" font-size="14">SQLite</text>
+    <rect x="182" y="106" width="126" height="44" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="245" y="133" text-anchor="middle" font-size="14">Secure Store</text>
+
+    <rect x="356" y="35" width="268" height="64" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="490" y="60" text-anchor="middle" font-size="14" font-weight="600">Cognito</text>
+    <text x="490" y="80" text-anchor="middle" font-size="12">user pool and identity pool</text>
+
+    <rect x="676" y="12" width="340" height="176" rx="12" fill="#f4f5f7"/>
+    <text x="692" y="32" font-size="13" font-weight="600">Ask</text>
+    <rect x="692" y="48" width="160" height="64" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="772" y="74" text-anchor="middle" font-size="14">AgentCore</text>
+    <text x="772" y="94" text-anchor="middle" font-size="12">runtime</text>
+    <rect x="880" y="48" width="120" height="64" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="940" y="86" text-anchor="middle" font-size="14">Nova Lite</text>
+
+    <rect x="24" y="220" width="992" height="120" rx="12" fill="#f4f5f7"/>
+    <text x="40" y="244" font-size="13" font-weight="600">Index</text>
+    <rect x="96" y="268" width="156" height="52" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="174" y="299" text-anchor="middle" font-size="14">S3 entries</text>
+    <rect x="280" y="268" width="70" height="52" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="315" y="299" text-anchor="middle" font-size="14">SQS</text>
+    <rect x="378" y="268" width="178" height="52" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="467" y="299" text-anchor="middle" font-size="14">Ingestion Lambda</text>
+    <rect x="688" y="268" width="168" height="52" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="772" y="299" text-anchor="middle" font-size="14">Knowledge Base</text>
+    <rect x="884" y="268" width="112" height="52" rx="8" fill="#ffffff" stroke="#1a1a1a"/>
+    <text x="940" y="299" text-anchor="middle" font-size="14">S3 Vectors</text>
+  </g>
+  <g fill="none" stroke="#1a1a1a" stroke-width="1.5">
+    <path d="M 174 90 V 98 H 103 V 106"/>
+    <path d="M 174 98 H 245 V 106"/>
+  </g>
+  <g fill="none" stroke="#1a1a1a" stroke-width="1.5" marker-end="url(#arrow)">
+    <path d="M 308 67 H 356"/>
+    <path d="M 174 150 V 268"/>
+    <path d="M 324 168 H 660 V 80 H 692"/>
+    <path d="M 852 80 H 880"/>
+    <path d="M 772 112 V 268"/>
+    <path d="M 252 294 H 280"/>
+    <path d="M 350 294 H 378"/>
+    <path d="M 556 294 H 688"/>
+    <path d="M 856 294 H 884"/>
+  </g>
+  <g font-family="ui-sans-serif, system-ui, sans-serif" fill="#1a1a1a" font-size="12">
+    <text x="332" y="28" text-anchor="middle">sign in</text>
+    <text x="164" y="192" text-anchor="end">upload, restore,</text>
+    <text x="164" y="208" text-anchor="end">delete</text>
+    <text x="485" y="160" text-anchor="middle">question and unsynced notes</text>
+    <text x="780" y="186">search_entries</text>
+  </g>
+</svg>

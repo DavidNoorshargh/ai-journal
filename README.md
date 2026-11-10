@@ -6,6 +6,14 @@ Writing stays on the phone, so it works offline. Each entry uploads to S3 when t
 
 The reviewed design and build order are in [docs/plan.md](docs/plan.md).
 
+## Architecture
+
+The phone keeps the journal. AWS keeps the searchable copy and writes the answer.
+
+![The phone keeps the journal in SQLite. Uploads go to S3 and the Knowledge Base. Questions go to AgentCore and Nova Lite.](docs/architecture.svg)
+
+Saving writes SQLite and returns. The app uploads and deletes under `entries/` when it is online, using the identity-pool role. An empty journal copies those objects back. S3 events become one Knowledge Base ingestion job per burst, and the Knowledge Base embeds them with Titan into S3 Vectors. A question goes to the AgentCore runtime. The runtime searches the Knowledge Base once, then Nova Lite writes the summary. Notes still waiting to upload travel with the question.
+
 ## Stack
 
 - React Native with Expo, and SQLite on the phone. The app is in [app/](app/). Launch it on the Android emulator with the steps in [app/README.md](app/README.md).
