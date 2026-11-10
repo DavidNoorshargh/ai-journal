@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { AppState } from "react-native";
 import { Stack } from "expo-router/stack";
 import * as SplashScreen from "expo-splash-screen";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { openJournal } from "@/journal/open-journal";
@@ -20,10 +21,12 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <SessionProvider>
-        <UploadOnForeground />
-        <RootStack />
-      </SessionProvider>
+      <KeyboardProvider>
+        <SessionProvider>
+          <UploadOnForeground />
+          <RootStack />
+        </SessionProvider>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }

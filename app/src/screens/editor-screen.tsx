@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { fieldDate, storedDate, todayFieldDate } from "@/journal/dates";
 import { createEntry, deleteEntry, readEntry, updateEntry } from "@/journal/entries";
@@ -26,7 +27,13 @@ export function EditorScreen({ mode, noteId }: { mode: EditorMode; noteId?: stri
   }, [mode, noteId]);
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} testID="editor-screen">
+    <KeyboardAwareScrollView
+      bottomOffset={24}
+      contentContainerStyle={styles.screen}
+      keyboardShouldPersistTaps="handled"
+      style={styles.fill}
+      testID="editor-screen"
+    >
       <NoteFields
         title={title}
         date={date}
@@ -50,7 +57,7 @@ export function EditorScreen({ mode, noteId }: { mode: EditorMode; noteId?: stri
           onPress={() => removeNote(noteId, setError, setSaving)}
         />
       ) : null}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
@@ -286,6 +293,9 @@ function errorMessage(caught: unknown, fallback: string): string {
 }
 
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
   screen: {
     gap: 12,
     padding: 20,
