@@ -47,3 +47,8 @@ output "agent_runtime_arn" {
   description = "AgentCore runtime that answers a question from the journal."
   value       = aws_bedrockagentcore_agent_runtime.journal.agent_runtime_arn
 }
+
+output "faithfulness_role_arn" {
+  description = "Role the one-off Faithfulness job assumes. It can read the eval prefix and invoke Nova Pro."
+  value       = aws_iam_role.faithfulness.arn
+}

@@ -30,7 +30,7 @@ Region `eu-west-2`. One job, one metric: `Builtin.Faithfulness`.
 
 The evaluator model is Amazon Nova Pro, through the EU cross-region inference profile. It is on the supported evaluator list, and it is a stronger model than the Nova Lite writer. Confirm that profile is enabled in this account before creating the job. The console's model picker is the check.
 
-The service role can read the dataset prefix, write the results prefix, and invoke that evaluator model. Bedrock may create this role. It is not the GitHub deploy role, and the main stack is not applied for this pass.
+The service role is `ai-journal-faithfulness`. It can read `eval/faithfulness/input/`, write `eval/faithfulness/output/`, and invoke Nova Pro. It cannot read the journal bucket. Bedrock can assume it only for an evaluation job in this account. The GitHub deploy role is not the job role. The deploy role can create this role after `infra/bootstrap` is applied. The job itself is not a Terraform resource and does not run on a push to `main`.
 
 Results go to their own prefix in the artifacts bucket. Each row comes back with a score from 0 to 1 and a short explanation. The first row should score high. The second row should score lower, and the explanation should name the added sentence.
 
@@ -38,9 +38,12 @@ No threshold is chosen. The job does not fail a pull request, and it does not ru
 
 ## Order
 
-1. Confirm Nova Pro is enabled for `eu-west-2`.
-2. Build the two-line dataset from the fixture and upload it to S3.
-3. Create the one-metric job and wait until it finishes.
-4. Read the two scores and the two explanations.
+1. Apply `infra/bootstrap` so the deploy role may create `ai-journal-faithfulness`.
+2. Let the pipeline apply the main stack, which creates that role.
+3. Confirm Nova Pro is enabled for `eu-west-2`.
+4. From `agent/`, with the SSO profile, run `python evals/faithfulness.py submit`. It reads `entries/fixture-retrieval.md`, writes the two-line file under `eval/faithfulness/input/`, creates the job, and prints the two scores and explanations. It does not print the fixture.
+5. Read those two lines. The first should score high. The second should score lower, and the explanation should name the added sentence.
+
+`python evals/faithfulness.py scores <job-arn>` prints the scores again without creating another job. An explanation can quote the fixture, so keep that output private.
 
 Stop there. Citation precision, citation coverage, and correctness stay in step 7.3.
