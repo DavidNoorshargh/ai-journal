@@ -651,33 +651,3 @@ resource "aws_iam_role_policy" "deploy_agent" {
   role   = aws_iam_role.deploy.id
   policy = data.aws_iam_policy_document.deploy_agent.json
 }
-
-data "aws_iam_policy_document" "deploy_faithfulness" {
-  statement {
-    sid    = "FaithfulnessRole"
-    effect = "Allow"
-    actions = [
-      "iam:CreateRole",
-      "iam:DeleteRole",
-      "iam:GetRole",
-      "iam:UpdateAssumeRolePolicy",
-      "iam:UpdateRole",
-      "iam:UpdateRoleDescription",
-      "iam:TagRole",
-      "iam:UntagRole",
-      "iam:ListRolePolicies",
-      "iam:ListAttachedRolePolicies",
-      "iam:ListInstanceProfilesForRole",
-      "iam:PutRolePolicy",
-      "iam:GetRolePolicy",
-      "iam:DeleteRolePolicy",
-    ]
-    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-faithfulness"]
-  }
-}
-
-resource "aws_iam_role_policy" "deploy_faithfulness" {
-  name   = "${var.project_name}-faithfulness"
-  role   = aws_iam_role.deploy.id
-  policy = data.aws_iam_policy_document.deploy_faithfulness.json
-}
