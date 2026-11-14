@@ -774,8 +774,15 @@ data "aws_iam_policy_document" "deploy_observability" {
   }
 }
 
-resource "aws_iam_role_policy" "deploy_observability" {
-  name   = "${var.project_name}-observability"
-  role   = aws_iam_role.deploy.id
-  policy = data.aws_iam_policy_document.deploy_observability.json
+# Inline policies on the deploy role are already near the 10KB IAM limit, so
+# this one is a managed policy attached to the role.
+resource "aws_iam_policy" "deploy_observability" {
+  name        = "${var.project_name}-observability"
+  description = "Lets the deploy role manage Transaction Search, runtime log groups, the logs key, and the CloudTrail trail."
+  policy      = data.aws_iam_policy_document.deploy_observability.json
+}
+
+resource "aws_iam_role_policy_attachment" "deploy_observability" {
+  role       = aws_iam_role.deploy.name
+  policy_arn = aws_iam_policy.deploy_observability.arn
 }
