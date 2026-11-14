@@ -709,14 +709,51 @@ data "aws_iam_policy_document" "deploy_observability" {
     ]
   }
 
+  # Official Enable Transaction Search prerequisites (AWS docs).
   statement {
     sid    = "TraceDestination"
     effect = "Allow"
     actions = [
       "xray:GetTraceSegmentDestination",
       "xray:UpdateTraceSegmentDestination",
+      "xray:GetIndexingRules",
+      "xray:UpdateIndexingRule",
     ]
     resources = ["*"]
+  }
+
+  statement {
+    sid       = "ApplicationSignalsDiscovery"
+    effect    = "Allow"
+    actions   = ["application-signals:StartDiscovery"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "ApplicationSignalsServiceLinkedRole"
+    effect    = "Allow"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/AWSServiceRoleForCloudWatchApplicationSignals"]
+
+    condition {
+      test     = "StringLike"
+      variable = "iam:AWSServiceName"
+      values   = ["application-signals.cloudwatch.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid       = "ApplicationSignalsGetRole"
+    effect    = "Allow"
+    actions   = ["iam:GetRole"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/application-signals.cloudwatch.amazonaws.com/AWSServiceRoleForCloudWatchApplicationSignals"]
+  }
+
+  statement {
+    sid       = "ApplicationSignalsCloudTrailChannel"
+    effect    = "Allow"
+    actions   = ["cloudtrail:CreateServiceLinkedChannel"]
+    resources = ["arn:aws:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:channel/aws-service-channel/application-signals/*"]
   }
 
   statement {
