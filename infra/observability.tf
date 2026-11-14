@@ -2,7 +2,8 @@
 # Needed before AgentCore Evaluations can score spans.
 
 locals {
-  agent_default_log_group = "/aws/bedrock-agentcore/runtimes/${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id}-DEFAULT"
+  agent_default_log_group    = "/aws/bedrock-agentcore/runtimes/${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id}-DEFAULT"
+  agent_production_log_group = "/aws/bedrock-agentcore/runtimes/${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id}-production"
 }
 
 data "aws_iam_policy_document" "logs_key" {
@@ -64,6 +65,12 @@ import {
 
 resource "aws_cloudwatch_log_group" "agent_default" {
   name              = local.agent_default_log_group
+  retention_in_days = 14
+  kms_key_id        = aws_kms_key.logs.arn
+}
+
+resource "aws_cloudwatch_log_group" "agent_production" {
+  name              = local.agent_production_log_group
   retention_in_days = 14
   kms_key_id        = aws_kms_key.logs.arn
 }

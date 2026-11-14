@@ -41,12 +41,12 @@ describe("invoke agent", () => {
 
     expect(reply).toEqual({ answer: "A lantern.", entryIds: ["pending"] });
     expect(calls[0].url).toBe(
-      `https://bedrock-agentcore.eu-west-2.amazonaws.com/runtimes/${encodeURIComponent(aws.runtimeArn)}/invocations?qualifier=DEFAULT`,
+      `https://bedrock-agentcore.eu-west-2.amazonaws.com/runtimes/${encodeURIComponent(aws.runtimeArn)}/invocations?qualifier=production`,
     );
     expect(calls[0].headers.Authorization).toBe(
       "AWS4-HMAC-SHA256 Credential=AKID/20130524/eu-west-2/bedrock-agentcore/aws4_request, " +
         "SignedHeaders=accept;content-type;host;x-amz-date;x-amz-security-token;x-amzn-bedrock-agentcore-runtime-session-id, " +
-        "Signature=99e052601b6073f274da7c336dd9324013a0d42cbbd9bad90193ddfdc2fc5e87",
+        "Signature=f171aa246b293eda40b2c141780485f5fd3668c3a47bba351a4825e6ca486241",
     );
     expect(calls[0].headers["x-amzn-bedrock-agentcore-runtime-session-id"]).toBe("askaabbccddeeff00112233445566778899");
     expect(JSON.parse(calls[0].body).unsyncedEntries[0].title).toBe("Blue lantern");

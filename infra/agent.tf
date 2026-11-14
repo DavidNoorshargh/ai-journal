@@ -214,3 +214,18 @@ resource "aws_bedrockagentcore_agent_runtime" "journal" {
     aws_xray_trace_segment_destination.cloudwatch,
   ]
 }
+
+# Phone traffic. Starts on the current version; ignore_changes keeps apply from
+# advancing it — only the Faithfulness gate moves agent_runtime_version.
+resource "aws_bedrockagentcore_agent_runtime_endpoint" "production" {
+  name                  = "production"
+  agent_runtime_id      = aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id
+  agent_runtime_version = aws_bedrockagentcore_agent_runtime.journal.agent_runtime_version
+  description           = "Phone traffic; advanced only by the Faithfulness gate."
+
+  lifecycle {
+    ignore_changes = [agent_runtime_version]
+  }
+
+  depends_on = [aws_cloudwatch_log_group.agent_production]
+}

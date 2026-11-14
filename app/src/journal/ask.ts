@@ -76,7 +76,7 @@ export async function invokeAgent(
 ): Promise<AgentReply> {
   const payload = JSON.stringify(body);
   const path = runtimePath(aws.runtimeArn);
-  const query = "qualifier=DEFAULT";
+  const query = "qualifier=production";
   const host = `bedrock-agentcore.${aws.region}.amazonaws.com`;
   const response = await post(`https://${host}${path}?${query}`, {
     method: "POST",
