@@ -651,3 +651,131 @@ resource "aws_iam_role_policy" "deploy_agent" {
   role   = aws_iam_role.deploy.id
   policy = data.aws_iam_policy_document.deploy_agent.json
 }
+
+data "aws_iam_policy_document" "deploy_observability" {
+  statement {
+    sid    = "RuntimeLogGroups"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:PutRetentionPolicy",
+      "logs:DeleteRetentionPolicy",
+      "logs:AssociateKmsKey",
+      "logs:DisassociateKmsKey",
+      "logs:TagResource",
+      "logs:UntagResource",
+      "logs:ListTagsForResource",
+      "logs:DescribeLogGroups",
+    ]
+    resources = [
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/*",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/*:*",
+    ]
+  }
+
+  statement {
+    sid    = "TransactionSearchPolicy"
+    effect = "Allow"
+    actions = [
+      "logs:PutResourcePolicy",
+      "logs:DeleteResourcePolicy",
+      "logs:DescribeResourcePolicies",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "TraceDestination"
+    effect = "Allow"
+    actions = [
+      "xray:GetTraceSegmentDestination",
+      "xray:UpdateTraceSegmentDestination",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "LogsKey"
+    effect = "Allow"
+    actions = [
+      "kms:CreateKey",
+      "kms:DescribeKey",
+      "kms:GetKeyPolicy",
+      "kms:PutKeyPolicy",
+      "kms:EnableKeyRotation",
+      "kms:GetKeyRotationStatus",
+      "kms:ScheduleKeyDeletion",
+      "kms:CancelKeyDeletion",
+      "kms:TagResource",
+      "kms:UntagResource",
+      "kms:ListResourceTags",
+      "kms:CreateAlias",
+      "kms:UpdateAlias",
+      "kms:DeleteAlias",
+      "kms:ListAliases",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "TrailBucket"
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:ListBucket",
+      "s3:GetBucket*",
+      "s3:PutBucket*",
+      "s3:DeleteBucketPolicy",
+      "s3:GetEncryptionConfiguration",
+      "s3:PutEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration",
+      "s3:GetReplicationConfiguration",
+      "s3:GetAccelerateConfiguration",
+    ]
+    resources = ["arn:aws:s3:::${var.project_name}-cloudtrail-${data.aws_caller_identity.current.account_id}"]
+  }
+
+  statement {
+    sid    = "TrailObjects"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:GetObjectTagging",
+      "s3:PutObjectTagging",
+      "s3:GetObjectAttributes",
+      "s3:AbortMultipartUpload",
+    ]
+    resources = ["arn:aws:s3:::${var.project_name}-cloudtrail-${data.aws_caller_identity.current.account_id}/*"]
+  }
+
+  statement {
+    sid    = "Trail"
+    effect = "Allow"
+    actions = [
+      "cloudtrail:CreateTrail",
+      "cloudtrail:DeleteTrail",
+      "cloudtrail:UpdateTrail",
+      "cloudtrail:GetTrail",
+      "cloudtrail:GetTrailStatus",
+      "cloudtrail:DescribeTrails",
+      "cloudtrail:StartLogging",
+      "cloudtrail:StopLogging",
+      "cloudtrail:PutEventSelectors",
+      "cloudtrail:GetEventSelectors",
+      "cloudtrail:AddTags",
+      "cloudtrail:RemoveTags",
+      "cloudtrail:ListTags",
+    ]
+    resources = ["arn:aws:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}"]
+  }
+}
+
+resource "aws_iam_role_policy" "deploy_observability" {
+  name   = "${var.project_name}-observability"
+  role   = aws_iam_role.deploy.id
+  policy = data.aws_iam_policy_document.deploy_observability.json
+}

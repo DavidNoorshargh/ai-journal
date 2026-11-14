@@ -1,0 +1,20 @@
+---
+description: Apply AGENTS.md and AWS skills before writing code
+alwaysApply: true
+---
+
+# Coding conventions and best practice
+
+Before writing or editing code, re-read [AGENTS.md](AGENTS.md) and apply it. Do not shape new code from memory of those rules.
+
+## AGENTS.md checklist
+
+- **Stepdown:** the function the caller came for is first; its steps are named calls; those helpers are defined below it, in the same order.
+- **Names:** say what the function does or returns. No `handle`, `process`, `doStuff`, or `data`.
+- **One job, short:** if a block needs a comment to explain it, that block is its own function.
+
+After a non-trivial edit, re-read the changed file top to bottom and fix stepdown order before moving on.
+
+## AWS / Bedrock best practice
+
+When the change touches `agent/`, Bedrock or AgentCore Terraform under `infra/`, retrieval, Evaluations, or observability, load [.cursor/skills/amazon-bedrock/SKILL.md](../skills/amazon-bedrock/SKILL.md) first and follow it: retrieve the live `amazon-bedrock` skill (and the relevant reference file) before editing. Do not rely on remembered AWS guidance.

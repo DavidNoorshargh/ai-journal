@@ -1,6 +1,8 @@
 import json
 import os
 
+from traces import chat
+
 
 class BedrockModel:
     """One Converse call to choose the search, then one call to write the answer."""
@@ -32,7 +34,7 @@ class BedrockModel:
             request["toolConfig"] = _SUMMARY_CONFIG
         elif tools:
             request["toolConfig"] = {"tools": [_SEARCH_TOOL]}
-        return self.client.converse(**request)
+        return chat(messages, lambda: self.client.converse(**request))
 
 
 def _parse_converse(response):

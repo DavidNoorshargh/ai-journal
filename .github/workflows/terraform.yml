@@ -130,7 +130,7 @@ jobs:
       - name: Pytest
         working-directory: agent
         run: |
-          python -m pip install pytest
+          python -m pip install pytest opentelemetry-api opentelemetry-sdk
           python -m pytest
 
   pytest-ingestion:

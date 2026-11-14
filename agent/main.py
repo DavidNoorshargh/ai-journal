@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from model import BedrockModel
 from search import require_tags, search_entries
+from traces import execute_tool, invoke_agent
 
 EMPTY_ANSWER = "The journal does not contain it."
 
@@ -64,11 +65,25 @@ def invoke(payload, *, search=None, model=None, today=None):
     if today is None:
         today = date.today()
 
+    return invoke_agent(question, unsynced, lambda: _answer(question, unsynced, search, model, today))
+
+
+def _answer(question, unsynced, search, model, today):
     prompt = _prompt(question, unsynced, today)
     query, tags, start_date, end_date = _search_from(question, _requested_search(model.choose_search(prompt)))
-    entries = search(query, tags=tags, start_date=start_date, end_date=end_date)
+    entries = _search(search, query, tags, start_date, end_date)
     answer = model.write_answer(prompt, entries)
     return _response(answer, entries, unsynced, getattr(model, "cited_ids", []))
+
+
+def _search(search, query, tags, start_date, end_date):
+    return execute_tool(
+        query,
+        tags,
+        start_date,
+        end_date,
+        lambda: search(query, tags=tags, start_date=start_date, end_date=end_date),
+    )
 
 
 def parse_request(payload):

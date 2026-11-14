@@ -115,14 +115,60 @@ data "aws_iam_policy_document" "agent" {
     sid    = "RuntimeLogs"
     effect = "Allow"
     actions = [
+      "logs:DescribeLogStreams",
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
+      "logs:PutResourcePolicy",
     ]
     resources = [
       "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/*",
       "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*",
     ]
+  }
+
+  statement {
+    sid       = "DescribeLogGroups"
+    effect    = "Allow"
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:*"]
+  }
+
+  statement {
+    sid    = "Traces"
+    effect = "Allow"
+    actions = [
+      "xray:PutTraceSegments",
+      "xray:PutTelemetryRecords",
+      "xray:GetSamplingRules",
+      "xray:GetSamplingTargets",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "RuntimeMetrics"
+    effect    = "Allow"
+    actions   = ["cloudwatch:PutMetricData"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "cloudwatch:namespace"
+      values   = ["bedrock-agentcore"]
+    }
+  }
+
+  statement {
+    sid    = "EncryptRuntimeLogs"
+    effect = "Allow"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:GenerateDataKey*",
+      "kms:DescribeKey",
+    ]
+    resources = [aws_kms_key.logs.arn]
   }
 }
 
@@ -139,7 +185,7 @@ resource "aws_bedrockagentcore_agent_runtime" "journal" {
 
   agent_runtime_artifact {
     code_configuration {
-      entry_point = ["main.py"]
+      entry_point = ["opentelemetry-instrument", "main.py"]
       runtime     = "PYTHON_3_13"
 
       code {
@@ -156,10 +202,15 @@ resource "aws_bedrockagentcore_agent_runtime" "journal" {
   }
 
   environment_variables = {
-    AWS_REGION        = var.aws_region
-    KNOWLEDGE_BASE_ID = aws_bedrockagent_knowledge_base.journal.id
-    MODEL_ID          = local.chat_model_id
+    AWS_REGION                           = var.aws_region
+    KNOWLEDGE_BASE_ID                    = aws_bedrockagent_knowledge_base.journal.id
+    MODEL_ID                             = local.chat_model_id
+    UNIFIED_TRACES_DESTINATION_ENABLED   = "true"
+    AWS_GENAI_CONTENT_EXTRACTION_OPT_OUT = "true"
   }
 
-  depends_on = [aws_iam_role_policy.agent]
+  depends_on = [
+    aws_iam_role_policy.agent,
+    aws_xray_trace_segment_destination.cloudwatch,
+  ]
 }

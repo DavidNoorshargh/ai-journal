@@ -14,8 +14,9 @@ python3 -m pip install \
   --implementation cp \
   --only-binary=:all: \
   --target "$dest" \
-  boto3
-cp "$root/agent/main.py" "$root/agent/search.py" "$root/agent/model.py" "$dest/"
+  boto3 \
+  'aws-opentelemetry-distro>=0.18.0'
+cp "$root/agent/main.py" "$root/agent/search.py" "$root/agent/model.py" "$root/agent/traces.py" "$dest/"
 python3 -c 'import pathlib, shutil
 root = pathlib.Path("'"$dest"'")
 for path in root.rglob("__pycache__"):
