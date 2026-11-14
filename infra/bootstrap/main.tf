@@ -685,13 +685,15 @@ data "aws_iam_policy_document" "deploy_observability" {
     resources = ["*"]
   }
 
-  # UpdateTraceSegmentDestination creates these groups when Transaction Search turns on.
+  # UpdateTraceSegmentDestination creates these groups and their streams.
   statement {
     sid    = "TransactionSearchLogGroups"
     effect = "Allow"
     actions = [
       "logs:CreateLogGroup",
       "logs:DeleteLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
       "logs:PutRetentionPolicy",
       "logs:DeleteRetentionPolicy",
       "logs:TagResource",
