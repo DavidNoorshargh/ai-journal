@@ -753,7 +753,8 @@ data "aws_iam_policy_document" "deploy_observability" {
     sid       = "ApplicationSignalsCloudTrailChannel"
     effect    = "Allow"
     actions   = ["cloudtrail:CreateServiceLinkedChannel"]
-    resources = ["arn:aws:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:channel/aws-service-channel/application-signals/*"]
+    # AWS docs use region *; StartDiscovery may create the channel outside eu-west-2.
+    resources = ["arn:aws:cloudtrail:*:${data.aws_caller_identity.current.account_id}:channel/aws-service-channel/application-signals/*"]
   }
 
   statement {
