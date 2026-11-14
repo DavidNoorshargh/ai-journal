@@ -685,6 +685,28 @@ data "aws_iam_policy_document" "deploy_observability" {
     resources = ["*"]
   }
 
+  # UpdateTraceSegmentDestination creates these groups when Transaction Search turns on.
+  statement {
+    sid    = "TransactionSearchLogGroups"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:PutRetentionPolicy",
+      "logs:DeleteRetentionPolicy",
+      "logs:TagResource",
+      "logs:UntagResource",
+      "logs:ListTagsForResource",
+      "logs:DescribeLogGroups",
+    ]
+    resources = [
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:aws/spans",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:aws/spans:*",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/application-signals/data",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/application-signals/data:*",
+    ]
+  }
+
   statement {
     sid    = "TraceDestination"
     effect = "Allow"
@@ -761,7 +783,6 @@ data "aws_iam_policy_document" "deploy_observability" {
       "cloudtrail:UpdateTrail",
       "cloudtrail:GetTrail",
       "cloudtrail:GetTrailStatus",
-      "cloudtrail:DescribeTrails",
       "cloudtrail:StartLogging",
       "cloudtrail:StopLogging",
       "cloudtrail:PutEventSelectors",
@@ -771,6 +792,14 @@ data "aws_iam_policy_document" "deploy_observability" {
       "cloudtrail:ListTags",
     ]
     resources = ["arn:aws:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}"]
+  }
+
+  # DescribeTrails does not accept a trail ARN.
+  statement {
+    sid       = "DescribeTrails"
+    effect    = "Allow"
+    actions   = ["cloudtrail:DescribeTrails"]
+    resources = ["*"]
   }
 }
 
