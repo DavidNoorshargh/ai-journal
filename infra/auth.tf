@@ -138,15 +138,12 @@ data "aws_iam_policy_document" "entries_write" {
     }
   }
 
-  # Both endpoints while the phone moves from DEFAULT to production. A later
-  # apply drops DEFAULT once the installed app uses qualifier=production only.
   statement {
     sid     = "InvokeAgent"
     effect  = "Allow"
     actions = ["bedrock-agentcore:InvokeAgentRuntime"]
     resources = [
       aws_bedrockagentcore_agent_runtime.journal.agent_runtime_arn,
-      "${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_arn}/runtime-endpoint/DEFAULT",
       "${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_arn}/runtime-endpoint/production",
     ]
   }
