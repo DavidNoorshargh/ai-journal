@@ -57,9 +57,9 @@ Blocking shared-infrastructure regressions too needs AWS's full pattern: a separ
 
 ## Fixture notes
 
-The golden questions are about made-up notes, so committing them reveals nothing about the journal. Three to five fixture notes go into `entries/` with known ids, dates years in the past, and subjects the real journal does not have.
+The golden questions are about made-up notes, so committing them reveals nothing about the journal. Three to five fixture notes go into `entries/` with known ids, dates years in the past, subjects the real journal does not have, and sidecar metadata `fixture: true`.
 
-Those notes sit in the real index. A real question on the same subject could cite one, and a restore onto an empty phone copies them. Keeping the subjects distinctive keeps that rare. A metadata flag the agent filters out on real questions is the fix if it ever shows up.
+Phone asks and empty-journal restore skip those notes. The gate opts back in with `includeFixtures: true` on the invoke payload so golden questions can still find them. Ids also start with `fixture-` as a second check.
 
 ## Monitoring
 

@@ -5,15 +5,25 @@ RESULTS_LIMIT = 20
 TIME_ONLY_LIMIT = 100
 
 
-def search_entries(query, tags=None, start_date=None, end_date=None, *, client=None, knowledge_base_id=None):
+def search_entries(
+    query,
+    tags=None,
+    start_date=None,
+    end_date=None,
+    *,
+    include_fixtures=False,
+    client=None,
+    knowledge_base_id=None,
+):
     """Retrieve whole entries for one query.
 
     Date is stored as text, so the index rejects a range filter. The date window is applied to the entries that were retrieved. Tags are still a metadata filter, applied before ranking.
     An empty query with a date range is a time-only search: return the entries in that window.
+    Fixture notes are dropped unless include_fixtures is true, so phone asks stay on the real journal.
     """
     query, tags, start_date, end_date = _prepare_search(query, tags, start_date, end_date)
-    results = _retrieve(query, tags, start_date, end_date, client, knowledge_base_id)
-    entries = _entries_in_window(_whole_entries(results), start_date, end_date)
+    results = _retrieve(query, tags, start_date, end_date, include_fixtures, client, knowledge_base_id)
+    entries = _entries_in_window(_whole_entries(results, include_fixtures), start_date, end_date)
     if query.strip():
         entries = _close_to_the_best(entries)
     return _without_scores(entries)
@@ -43,12 +53,14 @@ def _prepare_search(query, tags, start_date, end_date):
     return query, tags, start_date, end_date
 
 
-def _retrieve(query, tags, start_date, end_date, client, knowledge_base_id):
+def _retrieve(query, tags, start_date, end_date, include_fixtures, client, knowledge_base_id):
     response = _knowledge_base_client(client).retrieve(
         knowledgeBaseId=knowledge_base_id or os.environ["KNOWLEDGE_BASE_ID"],
         retrievalQuery={"text": query.strip() or "journal entry"},
         retrievalConfiguration={
-            "vectorSearchConfiguration": _vector_search_configuration(query, tags, start_date, end_date)
+            "vectorSearchConfiguration": _vector_search_configuration(
+                query, tags, start_date, end_date, include_fixtures
+            )
         },
     )
     return response.get("retrievalResults") or []
@@ -62,17 +74,27 @@ def _knowledge_base_client(client):
     return boto3.client("bedrock-agent-runtime")
 
 
-def _vector_search_configuration(query, tags, start_date, end_date):
+def _vector_search_configuration(query, tags, start_date, end_date, include_fixtures):
     time_only = not query.strip()
     configuration = {"numberOfResults": TIME_ONLY_LIMIT if time_only else RESULTS_LIMIT}
-    metadata_filter = _metadata_filter(tags)
+    metadata_filter = _metadata_filter(tags, include_fixtures)
     if metadata_filter is not None:
         configuration["filter"] = metadata_filter
     return configuration
 
 
-def _metadata_filter(tags):
-    return _tag_clause(tags)
+def _metadata_filter(tags, include_fixtures):
+    clauses = []
+    tag_clause = _tag_clause(tags)
+    if tag_clause is not None:
+        clauses.append(tag_clause)
+    if not include_fixtures:
+        clauses.append({"notEquals": {"key": "fixture", "value": True}})
+    if not clauses:
+        return None
+    if len(clauses) == 1:
+        return clauses[0]
+    return {"andAll": clauses}
 
 
 def _tag_clause(tags):
@@ -83,17 +105,20 @@ def _tag_clause(tags):
     return None
 
 
-def _whole_entries(results):
+def _whole_entries(results, include_fixtures):
     entries = {}
     order = []
     for result in results:
         entry_id = _result_entry_id(result)
         if not entry_id:
             continue
+        metadata = result.get("metadata") or {}
+        if not include_fixtures and _is_fixture(entry_id, metadata):
+            continue
         text = ((result.get("content") or {}).get("text")) or ""
         score = _result_score(result)
         if entry_id not in entries:
-            entries[entry_id] = _new_entry(entry_id, result.get("metadata") or {}, text, score)
+            entries[entry_id] = _new_entry(entry_id, metadata, text, score)
             order.append(entry_id)
             continue
         _append_entry_text(entries[entry_id], text)
@@ -104,6 +129,20 @@ def _whole_entries(results):
 def _result_entry_id(result):
     metadata = result.get("metadata") or {}
     return metadata.get("entryId") or _entry_id_from_location(result.get("location") or {})
+
+
+def _is_fixture(entry_id, metadata):
+    if entry_id.startswith("fixture-"):
+        return True
+    return _truthy_flag(metadata.get("fixture"))
+
+
+def _truthy_flag(value):
+    if value is True:
+        return True
+    if isinstance(value, str) and value.strip().lower() == "true":
+        return True
+    return False
 
 
 def _new_entry(entry_id, metadata, text, score):

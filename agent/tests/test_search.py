@@ -13,7 +13,7 @@ class FakeRetrieve:
         return {"retrievalResults": self.results}
 
 
-def test_query_without_filters():
+def test_query_excludes_fixtures_by_default():
     client = FakeRetrieve([])
 
     entries = search_entries("blue lantern", client=client, knowledge_base_id="kb")
@@ -23,12 +23,17 @@ def test_query_without_filters():
         {
             "knowledgeBaseId": "kb",
             "retrievalQuery": {"text": "blue lantern"},
-            "retrievalConfiguration": {"vectorSearchConfiguration": {"numberOfResults": 20}},
+            "retrievalConfiguration": {
+                "vectorSearchConfiguration": {
+                    "numberOfResults": 20,
+                    "filter": {"notEquals": {"key": "fixture", "value": True}},
+                }
+            },
         }
     ]
 
 
-def test_tags_and_date_range_are_a_filter():
+def test_tags_and_fixture_exclusion_are_combined():
     client = FakeRetrieve([])
 
     search_entries(
@@ -41,9 +46,14 @@ def test_tags_and_date_range_are_a_filter():
     )
 
     assert client.calls[0]["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] == {
-        "orAll": [
-            {"listContains": {"key": "tags", "value": "thoughts"}},
-            {"listContains": {"key": "tags", "value": "life"}},
+        "andAll": [
+            {
+                "orAll": [
+                    {"listContains": {"key": "tags", "value": "thoughts"}},
+                    {"listContains": {"key": "tags", "value": "life"}},
+                ]
+            },
+            {"notEquals": {"key": "fixture", "value": True}},
         ]
     }
 
@@ -52,12 +62,12 @@ def test_chunks_with_the_same_id_are_one_entry():
     client = FakeRetrieve(
         [
             {
-                "content": {"text": "The fixture entry is about a blue paper lantern."},
-                "metadata": {"entryId": "fixture-retrieval", "date": "20261024", "tags": ['"thoughts"']},
+                "content": {"text": "The note is about a blue paper lantern."},
+                "metadata": {"entryId": "note-lantern", "date": "20261024", "tags": ['"thoughts"']},
             },
             {
-                "content": {"text": "It is only a retrieval check."},
-                "metadata": {"entryId": "fixture-retrieval", "date": "20261024", "tags": ["thoughts"]},
+                "content": {"text": "It sits on the kitchen table."},
+                "metadata": {"entryId": "note-lantern", "date": "20261024", "tags": ["thoughts"]},
             },
         ]
     )
@@ -66,10 +76,10 @@ def test_chunks_with_the_same_id_are_one_entry():
 
     assert entries == [
         {
-            "entryId": "fixture-retrieval",
+            "entryId": "note-lantern",
             "date": "20261024",
             "tags": ["thoughts"],
-            "text": "The fixture entry is about a blue paper lantern.\nIt is only a retrieval check.",
+            "text": "The note is about a blue paper lantern.\nIt sits on the kitchen table.",
         }
     ]
 
@@ -79,7 +89,7 @@ def test_entry_id_can_come_from_the_object_key():
         [
             {
                 "content": {"text": "A note."},
-                "location": {"s3Location": {"uri": "s3://bucket/entries/fixture-retrieval.md"}},
+                "location": {"s3Location": {"uri": "s3://bucket/entries/note-lantern.md"}},
                 "metadata": {},
             }
         ]
@@ -87,7 +97,29 @@ def test_entry_id_can_come_from_the_object_key():
 
     entries = search_entries("note", client=client, knowledge_base_id="kb")
 
-    assert entries[0]["entryId"] == "fixture-retrieval"
+    assert entries[0]["entryId"] == "note-lantern"
+
+
+def test_fixture_notes_are_dropped_unless_requested():
+    client = FakeRetrieve(
+        [
+            {
+                "content": {"text": "A blue paper lantern."},
+                "metadata": {"entryId": "fixture-retrieval", "date": "20261024", "fixture": True},
+            },
+            {
+                "content": {"text": "A real walk."},
+                "metadata": {"entryId": "note-walk", "date": "20261106"},
+            },
+        ]
+    )
+
+    phone = search_entries("lantern", client=client, knowledge_base_id="kb")
+    gate = search_entries("lantern", include_fixtures=True, client=client, knowledge_base_id="kb")
+
+    assert [entry["entryId"] for entry in phone] == ["note-walk"]
+    assert [entry["entryId"] for entry in gate] == ["fixture-retrieval", "note-walk"]
+    assert "filter" not in client.calls[1]["retrievalConfiguration"]["vectorSearchConfiguration"]
 
 
 def test_one_day_window_drops_other_days():
@@ -109,7 +141,7 @@ def test_one_day_window_drops_other_days():
     assert [entry["entryId"] for entry in entries] == ["today"]
     vector_search = client.calls[0]["retrievalConfiguration"]["vectorSearchConfiguration"]
     assert vector_search["numberOfResults"] == 100
-    assert "filter" not in vector_search
+    assert vector_search["filter"] == {"notEquals": {"key": "fixture", "value": True}}
 
 
 def test_dashed_dates_are_normalized():

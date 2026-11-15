@@ -124,8 +124,8 @@ describe("restore uploaded notes", () => {
 
   it("reads a blank title and a typed sidecar", () => {
     const note = restoredNote(
-      "fixture-retrieval",
-      "The fixture entry is about a blue paper lantern.",
+      "note-lantern",
+      "The note is about a blue paper lantern.",
       JSON.stringify({
         metadataAttributes: {
           date: { value: { type: "STRING", stringValue: "20261024" } },
@@ -135,11 +135,38 @@ describe("restore uploaded notes", () => {
     );
 
     expect(note).toEqual({
-      id: "fixture-retrieval",
+      id: "note-lantern",
       date: "20261024",
       title: "",
-      body: "The fixture entry is about a blue paper lantern.",
+      body: "The note is about a blue paper lantern.",
       tags: ["thoughts"],
     });
+  });
+
+  it("skips fixture notes so they stay out of an empty phone", () => {
+    const flagged = restoredNote(
+      "note-cerulean",
+      "A cerulean harmonica.",
+      JSON.stringify({
+        metadataAttributes: {
+          date: "20180412",
+          tags: ["thoughts"],
+          fixture: { value: { type: "BOOLEAN", booleanValue: true } },
+        },
+      }),
+    );
+    const prefixed = restoredNote(
+      "fixture-retrieval",
+      "A blue paper lantern.",
+      JSON.stringify({
+        metadataAttributes: {
+          date: "20261024",
+          tags: ["thoughts"],
+        },
+      }),
+    );
+
+    expect(flagged).toBeNull();
+    expect(prefixed).toBeNull();
   });
 });

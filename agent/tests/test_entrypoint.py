@@ -22,7 +22,7 @@ class ScriptedModel:
 
 
 def test_question_and_unsynced_entries_are_read():
-    question, unsynced = parse_request(
+    question, unsynced, include_fixtures = parse_request(
         {
             "question": "  what about the lantern? ",
             "unsyncedEntries": [
@@ -32,13 +32,14 @@ def test_question_and_unsynced_entries_are_read():
     )
 
     assert question == "what about the lantern?"
+    assert include_fixtures is False
     assert unsynced == [
         {"entryId": "local-1", "date": "20261024", "tags": ["life"], "text": "Still on the phone."}
     ]
 
 
 def test_unsynced_title_is_part_of_the_text():
-    _, unsynced = parse_request(
+    _, unsynced, _ = parse_request(
         {
             "question": "lantern",
             "unsyncedEntries": [
@@ -61,7 +62,7 @@ def test_defined_phrases_are_in_the_prompt():
 
     invoke(
         {"question": "what about the lantern last week?"},
-        search=lambda query, tags=None, start_date=None, end_date=None: [],
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [],
         model=model,
         today=date(2026, 10, 24),
     )
@@ -80,7 +81,7 @@ def test_defined_phrases_are_in_the_prompt():
 def test_search_is_called_once_with_the_model_range():
     calls = []
 
-    def search(query, tags=None, start_date=None, end_date=None):
+    def search(query, tags=None, start_date=None, end_date=None, include_fixtures=False):
         calls.append((query, tags, start_date, end_date))
         return [
             {
@@ -115,7 +116,7 @@ def test_search_is_called_once_with_the_model_range():
 def test_a_question_with_no_time_drops_the_model_dates():
     calls = []
 
-    def search(query, tags=None, start_date=None, end_date=None):
+    def search(query, tags=None, start_date=None, end_date=None, include_fixtures=False):
         calls.append((query, tags, start_date, end_date))
         return []
 
@@ -136,7 +137,7 @@ def test_a_question_with_no_time_drops_the_model_dates():
 def test_a_blank_query_searches_the_question():
     calls = []
 
-    def search(query, tags=None, start_date=None, end_date=None):
+    def search(query, tags=None, start_date=None, end_date=None, include_fixtures=False):
         calls.append((query, tags, start_date, end_date))
         return []
 
@@ -153,7 +154,7 @@ def test_a_blank_query_searches_the_question():
 def test_a_missing_search_uses_the_question():
     calls = []
 
-    def search(query, tags=None, start_date=None, end_date=None):
+    def search(query, tags=None, start_date=None, end_date=None, include_fixtures=False):
         calls.append((query, tags, start_date, end_date))
         return []
 
@@ -170,7 +171,7 @@ def test_a_missing_search_uses_the_question():
 def test_punctuation_is_not_a_query():
     calls = []
 
-    def search(query, tags=None, start_date=None, end_date=None):
+    def search(query, tags=None, start_date=None, end_date=None, include_fixtures=False):
         calls.append((query, tags, start_date, end_date))
         return []
 
@@ -187,7 +188,7 @@ def test_punctuation_is_not_a_query():
 def test_a_time_only_question_keeps_a_blank_query():
     calls = []
 
-    def search(query, tags=None, start_date=None, end_date=None):
+    def search(query, tags=None, start_date=None, end_date=None, include_fixtures=False):
         calls.append((query, tags, start_date, end_date))
         return []
 
@@ -205,7 +206,7 @@ def test_empty_search_cites_nothing():
     model = ScriptedModel({"query": "politics"}, "You seem anxious about politics. See invented-id.")
     result = invoke(
         {"question": "politics"},
-        search=lambda query, tags=None, start_date=None, end_date=None: [],
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [],
         model=model,
         today=date(2026, 10, 24),
     )
@@ -220,7 +221,7 @@ def test_unsynced_id_can_be_cited_when_the_model_uses_it():
             "question": "what did I just write?",
             "unsyncedEntries": [{"id": "local-1", "date": "20261024", "tags": ["life"], "body": "Still on the phone."}],
         },
-        search=lambda query, tags=None, start_date=None, end_date=None: [],
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [],
         model=model,
         today=date(2026, 10, 24),
     )
@@ -237,7 +238,7 @@ def test_a_thinking_block_is_left_out_of_the_answer():
     )
     result = invoke(
         {"question": "lantern"},
-        search=lambda query, tags=None, start_date=None, end_date=None: [
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [
             {"entryId": "fixture-retrieval", "date": "20261024", "tags": ["thoughts"], "text": "A lantern."}
         ],
         model=model,
@@ -255,7 +256,7 @@ def test_an_entry_count_is_left_out_of_the_answer():
     )
     result = invoke(
         {"question": "lantern"},
-        search=lambda query, tags=None, start_date=None, end_date=None: [
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [
             {"entryId": "fixture-retrieval", "date": "20261024", "tags": ["thoughts"], "text": "A lantern."}
         ],
         model=model,
@@ -272,7 +273,7 @@ def test_a_quoted_note_is_left_out_of_the_answer():
     )
     result = invoke(
         {"question": "lantern"},
-        search=lambda query, tags=None, start_date=None, end_date=None: [
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [
             {"entryId": "fixture-retrieval", "date": "20261024", "tags": ["thoughts"], "text": "A lantern."}
         ],
         model=model,
@@ -289,7 +290,7 @@ def test_a_copied_note_is_left_out_of_the_summary():
     model = ScriptedModel({"query": "interview"}, f"You were overqualified for the role. {note}")
     result = invoke(
         {"question": "interview"},
-        search=lambda query, tags=None, start_date=None, end_date=None: [
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [
             {"entryId": "note-1", "date": "20261106", "tags": ["work"], "text": note}
         ],
         model=model,
@@ -308,7 +309,7 @@ def test_a_schema_id_cites_an_unsynced_note_and_ignores_an_invented_one():
             "question": "what did I just write?",
             "unsyncedEntries": [{"id": "local-1", "date": "20261024", "tags": ["life"], "body": "Still on the phone."}],
         },
-        search=lambda query, tags=None, start_date=None, end_date=None: [],
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [],
         model=model,
         today=date(2026, 10, 24),
     )

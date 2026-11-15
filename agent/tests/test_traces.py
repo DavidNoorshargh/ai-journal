@@ -51,7 +51,7 @@ def test_invoke_emits_agent_and_tool_spans():
 
     reply = invoke(
         {"question": "what about the lantern?"},
-        search=lambda query, tags=None, start_date=None, end_date=None: entries,
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: entries,
         model=ScriptedModel(),
         today=date(2026, 10, 24),
     )
@@ -78,7 +78,7 @@ def test_unsynced_notes_are_on_the_agent_span():
                 {"id": "local-1", "date": "20261024", "tags": ["life"], "body": "Still packing."}
             ],
         },
-        search=lambda query, tags=None, start_date=None, end_date=None: [],
+        search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [],
         model=ScriptedModel(),
         today=date(2026, 10, 24),
     )

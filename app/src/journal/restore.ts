@@ -66,6 +66,9 @@ export function restoredNote(id: string, markdown: string, sidecar: string): Res
   if (fields === null || text === null || !/^\d{8}$/.test(fields.date)) {
     return null;
   }
+  if (fields.fixture || id.startsWith("fixture-")) {
+    return null;
+  }
   return {
     id,
     date: fields.date,
@@ -75,7 +78,7 @@ export function restoredNote(id: string, markdown: string, sidecar: string): Res
   };
 }
 
-function sidecarFields(sidecar: string): { date: string; tags: string[] } | null {
+function sidecarFields(sidecar: string): { date: string; tags: string[]; fixture: boolean } | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(sidecar);
@@ -88,7 +91,7 @@ function sidecarFields(sidecar: string): { date: string; tags: string[] } | null
   if (date === null || tags === null) {
     return null;
   }
-  return { date, tags };
+  return { date, tags, fixture: booleanValue(record(attributes)?.fixture) };
 }
 
 function titleAndBody(markdown: string): { title: string; body: string } | null {
@@ -116,6 +119,17 @@ function textValue(value: unknown): string | null {
   }
   const typed = record(record(value)?.value)?.stringValue;
   return typeof typed === "string" ? typed : null;
+}
+
+function booleanValue(value: unknown): boolean {
+  if (value === true) {
+    return true;
+  }
+  if (typeof value === "string" && value.trim().toLowerCase() === "true") {
+    return true;
+  }
+  const typed = record(record(value)?.value)?.booleanValue;
+  return typed === true;
 }
 
 function listValue(value: unknown): string[] | null {

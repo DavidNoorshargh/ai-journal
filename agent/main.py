@@ -57,7 +57,7 @@ def _log_invoke_failure(exc):
 
 def invoke(payload, *, search=None, model=None, today=None):
     """Answer a question. The model may call search_entries once. A blank search uses the question."""
-    question, unsynced = parse_request(payload)
+    question, unsynced, include_fixtures = parse_request(payload)
     if search is None:
         search = search_entries
     if model is None:
@@ -65,24 +65,34 @@ def invoke(payload, *, search=None, model=None, today=None):
     if today is None:
         today = date.today()
 
-    return invoke_agent(question, unsynced, lambda: _answer(question, unsynced, search, model, today))
+    return invoke_agent(
+        question,
+        unsynced,
+        lambda: _answer(question, unsynced, include_fixtures, search, model, today),
+    )
 
 
-def _answer(question, unsynced, search, model, today):
+def _answer(question, unsynced, include_fixtures, search, model, today):
     prompt = _prompt(question, unsynced, today)
     query, tags, start_date, end_date = _search_from(question, _requested_search(model.choose_search(prompt)))
-    entries = _search(search, query, tags, start_date, end_date)
+    entries = _search(search, query, tags, start_date, end_date, include_fixtures)
     answer = model.write_answer(prompt, entries)
     return _response(answer, entries, unsynced, getattr(model, "cited_ids", []))
 
 
-def _search(search, query, tags, start_date, end_date):
+def _search(search, query, tags, start_date, end_date, include_fixtures):
     return execute_tool(
         query,
         tags,
         start_date,
         end_date,
-        lambda: search(query, tags=tags, start_date=start_date, end_date=end_date),
+        lambda: search(
+            query,
+            tags=tags,
+            start_date=start_date,
+            end_date=end_date,
+            include_fixtures=include_fixtures,
+        ),
     )
 
 
@@ -99,7 +109,8 @@ def parse_request(payload):
     if not isinstance(unsynced, list):
         raise ValueError("unsyncedEntries must be a list")
 
-    return question.strip(), [_unsynced_entry(entry) for entry in unsynced]
+    include_fixtures = payload.get("includeFixtures") is True
+    return question.strip(), [_unsynced_entry(entry) for entry in unsynced], include_fixtures
 
 
 def _unsynced_entry(entry):
