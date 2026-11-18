@@ -47,3 +47,18 @@ output "agent_runtime_arn" {
   description = "AgentCore runtime that answers a question from the journal."
   value       = aws_bedrockagentcore_agent_runtime.journal.agent_runtime_arn
 }
+
+output "agent_runtime_id" {
+  description = "Runtime id used in DEFAULT service name and log group paths."
+  value       = aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id
+}
+
+output "agent_default_log_group" {
+  description = "CloudWatch log group for DEFAULT endpoint spans. The gate reads here."
+  value       = local.agent_default_log_group
+}
+
+output "logs_key_arn" {
+  description = "KMS key that encrypts runtime and evaluation log groups."
+  value       = aws_kms_key.logs.arn
+}

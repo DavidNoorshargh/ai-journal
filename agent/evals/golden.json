@@ -1,0 +1,111 @@
+{
+  "scenarios": [
+    {
+      "scenario_id": "lantern-subject",
+      "turns": [
+        {
+          "input": {
+            "question": "Where is the blue paper lantern?",
+            "unsyncedEntries": [],
+            "includeFixtures": true
+          }
+        }
+      ],
+      "expected_trajectory": ["search_entries"],
+      "assertions": ["entry_ids=fixture-retrieval"],
+      "metadata": {
+        "expected_entry_ids": ["fixture-retrieval"]
+      }
+    },
+    {
+      "scenario_id": "harmonica-subject",
+      "turns": [
+        {
+          "input": {
+            "question": "What colour was the harmonica in the pawn shop?",
+            "unsyncedEntries": [],
+            "includeFixtures": true
+          }
+        }
+      ],
+      "expected_trajectory": ["search_entries"],
+      "assertions": ["entry_ids=fixture-cerulean-harmonica"],
+      "metadata": {
+        "expected_entry_ids": ["fixture-cerulean-harmonica"]
+      }
+    },
+    {
+      "scenario_id": "same-day-window",
+      "turns": [
+        {
+          "input": {
+            "question": "What happened on 12 April 2018?",
+            "unsyncedEntries": [],
+            "includeFixtures": true
+          }
+        }
+      ],
+      "expected_trajectory": ["search_entries"],
+      "assertions": [
+        "entry_ids=fixture-cerulean-harmonica,fixture-obsidian-teapot"
+      ],
+      "metadata": {
+        "expected_entry_ids": [
+          "fixture-cerulean-harmonica",
+          "fixture-obsidian-teapot"
+        ]
+      }
+    },
+    {
+      "scenario_id": "leap-day-quill",
+      "turns": [
+        {
+          "input": {
+            "question": "What did I write with during the lunar eclipse on 29 February 2020?",
+            "unsyncedEntries": [],
+            "includeFixtures": true
+          }
+        }
+      ],
+      "expected_trajectory": ["search_entries"],
+      "assertions": ["entry_ids=fixture-quill-eclipse"],
+      "metadata": {
+        "expected_entry_ids": ["fixture-quill-eclipse"]
+      }
+    },
+    {
+      "scenario_id": "ferry-compass",
+      "turns": [
+        {
+          "input": {
+            "question": "What did I leave on the ferry bench?",
+            "unsyncedEntries": [],
+            "includeFixtures": true
+          }
+        }
+      ],
+      "expected_trajectory": ["search_entries"],
+      "assertions": ["entry_ids=fixture-amber-compass"],
+      "metadata": {
+        "expected_entry_ids": ["fixture-amber-compass"]
+      }
+    },
+    {
+      "scenario_id": "missing-subject",
+      "turns": [
+        {
+          "input": {
+            "question": "Where is the neon submarine from Atlantis?",
+            "unsyncedEntries": [],
+            "includeFixtures": true
+          }
+        }
+      ],
+      "expected_trajectory": ["search_entries"],
+      "assertions": ["entry_ids="],
+      "metadata": {
+        "expected_entry_ids": []
+      }
+    }
+  ]
+}

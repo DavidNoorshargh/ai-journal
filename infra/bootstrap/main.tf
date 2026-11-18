@@ -750,9 +750,9 @@ data "aws_iam_policy_document" "deploy_observability" {
   }
 
   statement {
-    sid       = "ApplicationSignalsCloudTrailChannel"
-    effect    = "Allow"
-    actions   = ["cloudtrail:CreateServiceLinkedChannel"]
+    sid     = "ApplicationSignalsCloudTrailChannel"
+    effect  = "Allow"
+    actions = ["cloudtrail:CreateServiceLinkedChannel"]
     # AWS docs use region *; StartDiscovery may create the channel outside eu-west-2.
     resources = ["arn:aws:cloudtrail:*:${data.aws_caller_identity.current.account_id}:channel/aws-service-channel/application-signals/*"]
   }
@@ -854,4 +854,217 @@ resource "aws_iam_policy" "deploy_observability" {
 resource "aws_iam_role_policy_attachment" "deploy_observability" {
   role       = aws_iam_role.deploy.name
   policy_arn = aws_iam_policy.deploy_observability.arn
+}
+
+# Evaluations and the record-only gate. Same size reason as observability.
+data "aws_iam_policy_document" "deploy_evaluations" {
+  statement {
+    sid    = "EvaluationRoles"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:UpdateRole",
+      "iam:UpdateRoleDescription",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:PutRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:DeleteRolePolicy",
+    ]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-evaluation",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-id-evaluator",
+    ]
+  }
+
+  statement {
+    sid     = "PassIdEvaluatorRole"
+    effect  = "Allow"
+    actions = ["iam:PassRole"]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-id-evaluator",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["lambda.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid     = "PassEvaluationRole"
+    effect  = "Allow"
+    actions = ["iam:PassRole"]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-evaluation",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["bedrock-agentcore.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid    = "IdEvaluatorFunction"
+    effect = "Allow"
+    actions = [
+      "lambda:CreateFunction",
+      "lambda:DeleteFunction",
+      "lambda:GetFunction",
+      "lambda:GetFunctionCodeSigningConfig",
+      "lambda:GetPolicy",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:ListVersionsByFunction",
+      "lambda:TagResource",
+      "lambda:UntagResource",
+      "lambda:ListTags",
+      "lambda:AddPermission",
+      "lambda:RemovePermission",
+      "lambda:InvokeFunction",
+    ]
+    resources = [
+      "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-id-evaluator",
+    ]
+  }
+
+  statement {
+    sid    = "IdEvaluatorLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:DescribeLogGroups",
+      "logs:PutRetentionPolicy",
+      "logs:DeleteRetentionPolicy",
+      "logs:AssociateKmsKey",
+      "logs:DisassociateKmsKey",
+      "logs:ListTagsForResource",
+      "logs:TagResource",
+      "logs:UntagResource",
+    ]
+    resources = [
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-id-evaluator",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-id-evaluator:*",
+    ]
+  }
+
+  statement {
+    sid    = "Evaluators"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:CreateEvaluator",
+      "bedrock-agentcore:GetEvaluator",
+      "bedrock-agentcore:UpdateEvaluator",
+      "bedrock-agentcore:DeleteEvaluator",
+      "bedrock-agentcore:ListEvaluators",
+    ]
+    resources = [
+      "arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:evaluator/*",
+    ]
+  }
+
+  statement {
+    sid       = "CreateEvaluator"
+    effect    = "Allow"
+    actions   = ["bedrock-agentcore:CreateEvaluator"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid     = "GateInvokeDefault"
+    effect  = "Allow"
+    actions = ["bedrock-agentcore:InvokeAgentRuntime"]
+    resources = [
+      "arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:runtime/*",
+      "arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:runtime/*/runtime-endpoint/DEFAULT",
+    ]
+  }
+
+  statement {
+    sid    = "BatchEvaluations"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:StartBatchEvaluation",
+      "bedrock-agentcore:GetBatchEvaluation",
+      "bedrock-agentcore:ListBatchEvaluations",
+      "bedrock-agentcore:StopBatchEvaluation",
+      "bedrock-agentcore:DeleteBatchEvaluation",
+    ]
+    resources = [
+      "arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:batch-evaluate/*",
+    ]
+  }
+
+  statement {
+    sid    = "GateReadRuntimeSpans"
+    effect = "Allow"
+    actions = [
+      "logs:GetLogEvents",
+      "logs:FilterLogEvents",
+      "logs:StartQuery",
+      "logs:GetQueryResults",
+      "logs:DescribeLogStreams",
+    ]
+    resources = [
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/*",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/runtimes/*:*",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/evaluations/*",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/evaluations/*:*",
+    ]
+  }
+
+  statement {
+    sid    = "GateWriteEvaluationLogs"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:PutRetentionPolicy",
+      "logs:AssociateKmsKey",
+    ]
+    resources = [
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/evaluations/*",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/evaluations/*:*",
+    ]
+  }
+
+  statement {
+    sid    = "GateUseLogsKey"
+    effect = "Allow"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["logs.${var.aws_region}.amazonaws.com", "bedrock-agentcore.${var.aws_region}.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "deploy_evaluations" {
+  name        = "${var.project_name}-evaluations"
+  description = "Lets the deploy role manage the id evaluator, evaluation role, and run the Faithfulness gate."
+  policy      = data.aws_iam_policy_document.deploy_evaluations.json
+}
+
+resource "aws_iam_role_policy_attachment" "deploy_evaluations" {
+  role       = aws_iam_role.deploy.name
+  policy_arn = aws_iam_policy.deploy_evaluations.arn
 }

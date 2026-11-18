@@ -283,3 +283,63 @@ jobs:
       - name: Apply the saved plan
         working-directory: infra
         run: terraform apply -input=false tfplan
+
+  # Record-only: prints Faithfulness and entry-id averages. Does not move production.
+  faithfulness:
+    needs: apply
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.apply.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure the remote backend
+        working-directory: infra
+        run: bash ./scripts/backend-config.sh
+
+      - name: Read stack outputs
+        id: outputs
+        working-directory: infra
+        run: |
+          terraform init -backend-config=backend.hcl -input=false
+          {
+            echo "agent_runtime_arn=$(terraform output -raw agent_runtime_arn)"
+            echo "agent_runtime_id=$(terraform output -raw agent_runtime_id)"
+            echo "agent_default_log_group=$(terraform output -raw agent_default_log_group)"
+            echo "id_evaluator_id=$(terraform output -raw id_evaluator_id)"
+            echo "logs_key_arn=$(terraform output -raw logs_key_arn)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install gate dependencies
+        run: python -m pip install bedrock-agentcore boto3
+
+      - name: Run record-only Faithfulness gate
+        working-directory: agent
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          AGENT_RUNTIME_ARN: ${{ steps.outputs.outputs.agent_runtime_arn }}
+          AGENT_RUNTIME_ID: ${{ steps.outputs.outputs.agent_runtime_id }}
+          AGENT_DEFAULT_LOG_GROUP: ${{ steps.outputs.outputs.agent_default_log_group }}
+          ENTRY_IDS_EVALUATOR_ID: ${{ steps.outputs.outputs.id_evaluator_id }}
+          LOGS_KEY_ARN: ${{ steps.outputs.outputs.logs_key_arn }}
+          GOLDEN_DATASET_PATH: evals/golden.json
+          INGESTION_DELAY_SECONDS: "180"
+          POLLING_TIMEOUT_SECONDS: "1800"
+        run: python -m evals.gate
