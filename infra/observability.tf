@@ -48,10 +48,46 @@ data "aws_iam_policy_document" "logs_key" {
       ]
     }
   }
+
+  # Batch evaluation CMK: service encrypts S3 output with SSE-KMS.
+  # https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/batch-evaluations-encryption.html
+  statement {
+    sid    = "AgentCoreBatchEvaluation"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["bedrock-agentcore.amazonaws.com"]
+    }
+
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:batch-evaluate/*"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "kms:EncryptionContext:aws:bedrock-agentcore:batchEvaluationArn"
+      values   = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:batch-evaluate/*"]
+    }
+  }
 }
 
 resource "aws_kms_key" "logs" {
-  description             = "Encrypts AgentCore runtime log groups for the journal."
+  description             = "Encrypts AgentCore runtime log groups and batch evaluation output for the journal."
   deletion_window_in_days = 7
   enable_key_rotation     = true
   policy                  = data.aws_iam_policy_document.logs_key.json

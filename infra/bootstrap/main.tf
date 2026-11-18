@@ -1040,7 +1040,7 @@ data "aws_iam_policy_document" "deploy_evaluations" {
   }
 
   statement {
-    sid    = "GateUseLogsKey"
+    sid    = "GateUseLogsKeyViaService"
     effect = "Allow"
     actions = [
       "kms:Encrypt",
@@ -1054,6 +1054,32 @@ data "aws_iam_policy_document" "deploy_evaluations" {
       test     = "StringEquals"
       variable = "kms:ViaService"
       values   = ["logs.${var.aws_region}.amazonaws.com", "bedrock-agentcore.${var.aws_region}.amazonaws.com"]
+    }
+  }
+
+  # StartBatchEvaluation dry-runs caller KMS with the batch evaluation encryption context.
+  statement {
+    sid    = "GateDescribeLogsKey"
+    effect = "Allow"
+    actions = [
+      "kms:DescribeKey",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "GateBatchEvaluationKey"
+    effect = "Allow"
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringLike"
+      variable = "kms:EncryptionContext:aws:bedrock-agentcore:batchEvaluationArn"
+      values   = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:batch-evaluate/*"]
     }
   }
 }
