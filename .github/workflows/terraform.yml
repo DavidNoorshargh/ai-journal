@@ -237,6 +237,13 @@ jobs:
           if-no-files-found: error
           retention-days: 5
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: id-evaluator-zip
+          path: infra/build/id_evaluator.zip
+          if-no-files-found: error
+          retention-days: 5
+
   apply:
     needs: plan
     if: ${{ !cancelled() && github.event_name == 'push' && needs.plan.result == 'success' }}
@@ -278,6 +285,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: agent-zip
+          path: infra/build
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: id-evaluator-zip
           path: infra/build
 
       - name: Apply the saved plan
