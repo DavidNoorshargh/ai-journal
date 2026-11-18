@@ -87,7 +87,7 @@ data "aws_iam_policy_document" "logs_key" {
 }
 
 resource "aws_kms_key" "logs" {
-  description             = "Encrypts AgentCore runtime log groups and batch evaluation output for the journal."
+  description             = "Encrypts AgentCore runtime log groups for the journal."
   deletion_window_in_days = 7
   enable_key_rotation     = true
   policy                  = data.aws_iam_policy_document.logs_key.json
