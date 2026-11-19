@@ -333,7 +333,7 @@ jobs:
           terraform init -backend-config=backend.hcl -input=false
           {
             echo "agent_runtime_arn=$(terraform output -raw agent_runtime_arn)"
-            echo "agent_runtime_id=$(terraform output -raw agent_runtime_id)"
+            echo "agent_default_service_name=$(terraform output -raw agent_default_service_name)"
             echo "agent_default_log_group=$(terraform output -raw agent_default_log_group)"
             echo "id_evaluator_id=$(terraform output -raw id_evaluator_id)"
             echo "logs_key_arn=$(terraform output -raw logs_key_arn)"
@@ -347,7 +347,7 @@ jobs:
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
           AGENT_RUNTIME_ARN: ${{ steps.outputs.outputs.agent_runtime_arn }}
-          AGENT_RUNTIME_ID: ${{ steps.outputs.outputs.agent_runtime_id }}
+          AGENT_DEFAULT_SERVICE_NAME: ${{ steps.outputs.outputs.agent_default_service_name }}
           AGENT_DEFAULT_LOG_GROUP: ${{ steps.outputs.outputs.agent_default_log_group }}
           ENTRY_IDS_EVALUATOR_ID: ${{ steps.outputs.outputs.id_evaluator_id }}
           LOGS_KEY_ARN: ${{ steps.outputs.outputs.logs_key_arn }}

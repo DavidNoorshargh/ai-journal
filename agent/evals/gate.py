@@ -19,7 +19,7 @@ from bedrock_agentcore.evaluation import (
 def main():
     region = require_env("AWS_REGION")
     runtime_arn = require_env("AGENT_RUNTIME_ARN")
-    runtime_id = require_env("AGENT_RUNTIME_ID")
+    service_name = require_env("AGENT_DEFAULT_SERVICE_NAME")
     log_group = require_env("AGENT_DEFAULT_LOG_GROUP")
     entry_ids_evaluator = require_env("ENTRY_IDS_EVALUATOR_ID")
     golden_path = require_env("GOLDEN_DATASET_PATH")
@@ -27,7 +27,7 @@ def main():
 
     dataset = FileDatasetProvider(golden_path).get_dataset()
     client = boto3.client("bedrock-agentcore", region_name=region)
-    config = gate_config(runtime_id, log_group, entry_ids_evaluator, kms_key_arn)
+    config = gate_config(service_name, log_group, entry_ids_evaluator, kms_key_arn)
     result = BatchEvaluationRunner(region=region).run_dataset_evaluation(
         agent_invoker=lambda invoker_input: invoke_default(client, runtime_arn, invoker_input),
         dataset=dataset,
@@ -37,14 +37,14 @@ def main():
     return 0
 
 
-def gate_config(runtime_id, log_group, entry_ids_evaluator, kms_key_arn):
+def gate_config(service_name, log_group, entry_ids_evaluator, kms_key_arn):
     config = BatchEvaluationRunConfig(
         batch_evaluation_name=f"ai_journal_gate_{uuid.uuid4().hex[:8]}",
         evaluator_config=BatchEvaluatorConfig(
             evaluator_ids=["Builtin.Faithfulness", entry_ids_evaluator],
         ),
         data_source=CloudWatchDataSourceConfig(
-            service_names=[f"{runtime_id}.DEFAULT"],
+            service_names=[service_name],
             log_group_names=[log_group],
             ingestion_delay_seconds=int(os.environ.get("INGESTION_DELAY_SECONDS", "180")),
         ),

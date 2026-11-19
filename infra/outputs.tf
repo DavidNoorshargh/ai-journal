@@ -49,8 +49,13 @@ output "agent_runtime_arn" {
 }
 
 output "agent_runtime_id" {
-  description = "Runtime id used in DEFAULT service name and log group paths."
+  description = "Runtime id used in DEFAULT and production log group paths."
   value       = aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id
+}
+
+output "agent_default_service_name" {
+  description = "OTEL service.name for the DEFAULT endpoint (agent-name.DEFAULT). The gate filters spans by this."
+  value       = "${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_name}.DEFAULT"
 }
 
 output "agent_default_log_group" {

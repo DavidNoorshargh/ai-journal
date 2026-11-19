@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from model import BedrockModel
 from search import require_tags, search_entries
-from traces import execute_tool, invoke_agent
+from traces import execute_tool, invoke_agent, runtime_session
 
 EMPTY_ANSWER = "The journal does not contain it."
 
@@ -32,7 +32,8 @@ class _Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", "0"))
         try:
             payload = json.loads(self.rfile.read(length) or b"{}")
-            self._send_json(200, invoke(payload))
+            with runtime_session(self.headers):
+                self._send_json(200, invoke(payload))
         except ValueError as exc:
             self._send_json(400, {"error": str(exc)})
         except Exception as exc:

@@ -1,13 +1,14 @@
 from datetime import date
 
 import pytest
-from opentelemetry import trace
+from opentelemetry import baggage, trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from main import invoke
 from model import BedrockModel
+from traces import runtime_session
 
 _EXPORTER = InMemorySpanExporter()
 _PROVIDER = TracerProvider()
@@ -97,3 +98,33 @@ def test_converse_emits_a_chat_span():
     assert chat_span.attributes["gen_ai.operation.name"] == "chat"
     assert "Question: lantern" in chat_span.attributes["gen_ai.input.messages"]
     assert "search_entries" in chat_span.attributes["gen_ai.output.messages"]
+
+
+def test_runtime_session_stamps_session_id_on_spans():
+    session_id = "gate" + "a" * 32
+    with runtime_session({"X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id}):
+        invoke(
+            {"question": "what about the lantern?"},
+            search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [],
+            model=ScriptedModel(),
+            today=date(2026, 10, 24),
+        )
+
+    spans = [span for span in _EXPORTER.get_finished_spans() if span.name in {"invoke_agent", "execute_tool search_entries"}]
+    assert spans
+    for span in spans:
+        assert span.attributes["session.id"] == session_id
+    assert baggage.get_baggage("session.id") is None
+
+
+def test_runtime_session_without_header_omits_session_id():
+    with runtime_session({}):
+        invoke(
+            {"question": "what about the lantern?"},
+            search=lambda query, tags=None, start_date=None, end_date=None, include_fixtures=False: [],
+            model=ScriptedModel(),
+            today=date(2026, 10, 24),
+        )
+
+    agent = next(span for span in _EXPORTER.get_finished_spans() if span.name == "invoke_agent")
+    assert "session.id" not in agent.attributes

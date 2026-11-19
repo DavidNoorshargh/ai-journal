@@ -3,7 +3,9 @@
 import json
 from contextlib import contextmanager
 
-from opentelemetry import trace
+from opentelemetry import baggage, context, trace
+
+_SESSION_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id"
 
 
 def invoke_agent(question, unsynced, run):
@@ -59,10 +61,31 @@ def assistant_messages(response):
 
 
 @contextmanager
+def runtime_session(headers):
+    """Bind runtimeSessionId so every span in this request carries session.id."""
+    session_id = headers.get(_SESSION_HEADER)
+    if not session_id:
+        yield
+        return
+    token = context.attach(baggage.set_baggage("session.id", session_id))
+    try:
+        yield
+    finally:
+        context.detach(token)
+
+
+@contextmanager
 def _span(name, operation):
     with _tracer().start_as_current_span(name) as span:
         span.set_attribute("gen_ai.operation.name", operation)
+        _stamp_session(span)
         yield span
+
+
+def _stamp_session(span):
+    session_id = baggage.get_baggage("session.id")
+    if session_id:
+        span.set_attribute("session.id", session_id)
 
 
 def _tracer():
