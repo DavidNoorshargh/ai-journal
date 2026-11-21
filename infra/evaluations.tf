@@ -182,6 +182,99 @@ resource "aws_bedrockagentcore_evaluator" "entry_ids" {
   ]
 }
 
+resource "aws_bedrockagentcore_online_evaluation_config" "production" {
+  online_evaluation_config_name = "ai_journal_production"
+  description                   = "Scores every production answer with Builtin.Faithfulness."
+  enable_on_create              = true
+  evaluation_execution_role_arn = aws_iam_role.evaluation.arn
+
+  data_source_config {
+    cloudwatch_logs {
+      log_group_names = [aws_cloudwatch_log_group.agent_production.name]
+      service_names   = [local.agent_production_service_name]
+    }
+  }
+
+  evaluator {
+    evaluator_id = "Builtin.Faithfulness"
+  }
+
+  rule {
+    sampling_config {
+      sampling_percentage = 100
+    }
+
+    session_config {
+      session_timeout_minutes = 5
+    }
+  }
+
+  depends_on = [
+    aws_iam_role_policy.evaluation,
+    aws_xray_trace_segment_destination.cloudwatch,
+  ]
+}
+
+resource "aws_sns_topic" "faithfulness" {
+  name              = "${var.project_name}-faithfulness"
+  kms_master_key_id = aws_kms_key.logs.id
+}
+
+data "aws_iam_policy_document" "faithfulness_topic" {
+  statement {
+    sid    = "AllowCloudWatchAlarms"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch.amazonaws.com"]
+    }
+
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.faithfulness.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+resource "aws_sns_topic_policy" "faithfulness" {
+  arn    = aws_sns_topic.faithfulness.arn
+  policy = data.aws_iam_policy_document.faithfulness_topic.json
+}
+
+resource "aws_sns_topic_subscription" "faithfulness_email" {
+  topic_arn = aws_sns_topic.faithfulness.arn
+  protocol  = "email"
+  endpoint  = var.alarm_email
+}
+
+resource "aws_cloudwatch_metric_alarm" "faithfulness" {
+  alarm_name          = "${var.project_name}-faithfulness"
+  alarm_description   = "Production Builtin.Faithfulness average dropped below the provisional threshold."
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 1
+  datapoints_to_alarm = 1
+  metric_name         = "Builtin.Faithfulness"
+  namespace           = "Bedrock-AgentCore/Evaluations"
+  period              = 300
+  statistic           = "Average"
+  threshold           = var.faithfulness_alarm_threshold
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    OnlineEvaluationConfigId = aws_bedrockagentcore_online_evaluation_config.production.online_evaluation_config_id
+  }
+
+  alarm_actions = [aws_sns_topic.faithfulness.arn]
+  ok_actions    = [aws_sns_topic.faithfulness.arn]
+
+  depends_on = [aws_sns_topic_policy.faithfulness]
+}
+
 output "id_evaluator_id" {
   description = "AgentCore evaluator id for the entry-id check used by the gate."
   value       = aws_bedrockagentcore_evaluator.entry_ids.evaluator_id
@@ -190,4 +283,9 @@ output "id_evaluator_id" {
 output "evaluation_role_arn" {
   description = "Role AgentCore Evaluations assumes for online scoring. Batch uses the caller's credentials."
   value       = aws_iam_role.evaluation.arn
+}
+
+output "online_evaluation_config_id" {
+  description = "Online evaluation config that scores the production endpoint."
+  value       = aws_bedrockagentcore_online_evaluation_config.production.online_evaluation_config_id
 }

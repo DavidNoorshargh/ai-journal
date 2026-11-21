@@ -15,6 +15,8 @@ from bedrock_agentcore.evaluation import (
     FileDatasetProvider,
 )
 
+from evals.gate_summary import average_score, batch_unusable, pass_rates, rate_for_evaluator
+
 
 def main():
     region = require_env("AWS_REGION")
@@ -27,14 +29,15 @@ def main():
 
     dataset = FileDatasetProvider(golden_path).get_dataset()
     client = boto3.client("bedrock-agentcore", region_name=region)
+    runner = BatchEvaluationRunner(region=region)
     config = gate_config(service_name, log_group, entry_ids_evaluator, kms_key_arn)
-    result = BatchEvaluationRunner(region=region).run_dataset_evaluation(
+    result = runner.run_dataset_evaluation(
         agent_invoker=lambda invoker_input: invoke_default(client, runtime_arn, invoker_input),
         dataset=dataset,
         config=config,
     )
-    print_summary(result)
-    return 0
+    print_summary(result, runner)
+    return 1 if batch_unusable(result) else 0
 
 
 def gate_config(service_name, log_group, entry_ids_evaluator, kms_key_arn):
@@ -80,7 +83,7 @@ def request_payload(turn_input):
     return json.dumps(body).encode()
 
 
-def print_summary(result):
+def print_summary(result, runner=None):
     print(f"status={result.status}")
     print(f"batch_evaluation_id={result.batch_evaluation_id}")
     failures = result.agent_invocation_failures or []
@@ -92,13 +95,25 @@ def print_summary(result):
     print(f"sessions_completed={summary.number_of_sessions_completed}")
     print(f"sessions_failed={summary.number_of_sessions_failed}")
     print(f"sessions_total={summary.total_number_of_sessions}")
+    rates = pass_rates_from_runner(runner, result)
     for item in summary.evaluator_summaries or []:
-        average = None
-        if item.statistics is not None:
-            average = item.statistics.average_score
+        average = average_score(item)
+        if average is None:
+            average = rate_for_evaluator(item.evaluator_id, rates)
         print(
-            f"evaluator={item.evaluator_id} average={average} evaluated={item.total_evaluated}"
+            f"evaluator={item.evaluator_id} average={average} "
+            f"evaluated={item.total_evaluated} failed={item.total_failed}"
         )
+
+
+def pass_rates_from_runner(runner, result):
+    if runner is None:
+        return {}
+    try:
+        events = runner.fetch_evaluation_events(result)
+    except (ValueError, LookupError):
+        return {}
+    return pass_rates(events)
 
 
 def require_env(name):

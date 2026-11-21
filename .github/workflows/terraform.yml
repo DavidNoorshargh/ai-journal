@@ -210,6 +210,8 @@ jobs:
         working-directory: infra
         env:
           TF_VAR_agent_source_sha: ${{ github.sha }}
+          # Real inbox for Faithfulness SNS (repo variable ALARM_EMAIL). Not Cognito's journal@example.com.
+          TF_VAR_alarm_email: ${{ vars.ALARM_EMAIL }}
         run: |
           terraform init -backend-config=backend.hcl -input=false
           terraform plan -input=false -out=tfplan

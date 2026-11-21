@@ -2,8 +2,10 @@
 # Needed before AgentCore Evaluations can score spans.
 
 locals {
-  agent_default_log_group    = "/aws/bedrock-agentcore/runtimes/${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id}-DEFAULT"
-  agent_production_log_group = "/aws/bedrock-agentcore/runtimes/${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id}-production"
+  agent_default_log_group       = "/aws/bedrock-agentcore/runtimes/${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id}-DEFAULT"
+  agent_production_log_group    = "/aws/bedrock-agentcore/runtimes/${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_id}-production"
+  agent_default_service_name    = "${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_name}.DEFAULT"
+  agent_production_service_name = "${aws_bedrockagentcore_agent_runtime.journal.agent_runtime_name}.production"
 }
 
 data "aws_iam_policy_document" "logs_key" {
@@ -82,6 +84,29 @@ data "aws_iam_policy_document" "logs_key" {
       test     = "StringLike"
       variable = "kms:EncryptionContext:aws:bedrock-agentcore:batchEvaluationArn"
       values   = ["arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:batch-evaluate/*"]
+    }
+  }
+
+  statement {
+    sid    = "SnsAlarmTopic"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["sns.amazonaws.com"]
+    }
+
+    actions = [
+      "kms:Decrypt",
+      "kms:GenerateDataKey*",
+      "kms:DescribeKey",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
     }
   }
 }

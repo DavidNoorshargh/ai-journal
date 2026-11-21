@@ -21,3 +21,19 @@ variable "journal_user_email" {
   type        = string
   default     = "journal@example.com"
 }
+
+variable "alarm_email" {
+  description = "Real inbox for production Faithfulness alarms (SNS confirm + alerts). Not journal@example.com — that is Cognito only. Set via TF_VAR_alarm_email or untracked terraform.tfvars."
+  type        = string
+
+  validation {
+    condition     = var.alarm_email != "" && !endswith(var.alarm_email, "@example.com")
+    error_message = "Set alarm_email to a real inbox (TF_VAR_alarm_email or terraform.tfvars). journal@example.com cannot receive SNS mail."
+  }
+}
+
+variable "faithfulness_alarm_threshold" {
+  description = "Alarm when the production Builtin.Faithfulness average falls below this (0–1). Provisional until the gate threshold is chosen."
+  type        = number
+  default     = 0.5
+}

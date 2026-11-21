@@ -1,0 +1,9 @@
+aws_region         = "eu-west-2"
+project_name       = "ai-journal"
+journal_user_email = "journal@example.com"
+
+# Real inbox for Faithfulness SNS confirm + alerts (not committed as terraform.tfvars).
+alarm_email = "you@example.org"
+
+# Provisional until step 7 picks the gate threshold.
+# faithfulness_alarm_threshold = 0.5

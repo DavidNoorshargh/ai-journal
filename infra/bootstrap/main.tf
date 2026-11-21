@@ -981,6 +981,74 @@ data "aws_iam_policy_document" "deploy_evaluations" {
   }
 
   statement {
+    sid    = "OnlineEvaluationConfigs"
+    effect = "Allow"
+    actions = [
+      "bedrock-agentcore:CreateOnlineEvaluationConfig",
+      "bedrock-agentcore:GetOnlineEvaluationConfig",
+      "bedrock-agentcore:UpdateOnlineEvaluationConfig",
+      "bedrock-agentcore:DeleteOnlineEvaluationConfig",
+      "bedrock-agentcore:ListOnlineEvaluationConfigs",
+    ]
+    resources = [
+      "arn:aws:bedrock-agentcore:${var.aws_region}:${data.aws_caller_identity.current.account_id}:online-evaluation-config/*",
+    ]
+  }
+
+  statement {
+    sid       = "CreateOnlineEvaluationConfig"
+    effect    = "Allow"
+    actions   = ["bedrock-agentcore:CreateOnlineEvaluationConfig"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "FaithfulnessAlarmTopic"
+    effect = "Allow"
+    actions = [
+      "sns:CreateTopic",
+      "sns:DeleteTopic",
+      "sns:GetTopicAttributes",
+      "sns:SetTopicAttributes",
+      "sns:ListTagsForResource",
+      "sns:TagResource",
+      "sns:UntagResource",
+      "sns:Subscribe",
+      "sns:Unsubscribe",
+      "sns:GetSubscriptionAttributes",
+      "sns:SetSubscriptionAttributes",
+      "sns:ListSubscriptionsByTopic",
+    ]
+    resources = [
+      "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.project_name}-faithfulness",
+      "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.project_name}-faithfulness:*",
+    ]
+  }
+
+  statement {
+    sid    = "FaithfulnessAlarm"
+    effect = "Allow"
+    actions = [
+      "cloudwatch:PutMetricAlarm",
+      "cloudwatch:DeleteAlarms",
+      "cloudwatch:DescribeAlarms",
+      "cloudwatch:TagResource",
+      "cloudwatch:UntagResource",
+      "cloudwatch:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:cloudwatch:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:${var.project_name}-faithfulness",
+    ]
+  }
+
+  statement {
+    sid       = "DescribeFaithfulnessAlarm"
+    effect    = "Allow"
+    actions   = ["cloudwatch:DescribeAlarms"]
+    resources = ["*"]
+  }
+
+  statement {
     sid     = "GateInvokeDefault"
     effect  = "Allow"
     actions = ["bedrock-agentcore:InvokeAgentRuntime"]
@@ -1086,7 +1154,7 @@ data "aws_iam_policy_document" "deploy_evaluations" {
 
 resource "aws_iam_policy" "deploy_evaluations" {
   name        = "${var.project_name}-evaluations"
-  description = "Lets the deploy role manage the id evaluator, evaluation role, and run the Faithfulness gate."
+  description = "Lets the deploy role manage evaluators, online evaluation, the Faithfulness alarm, and the gate."
   policy      = data.aws_iam_policy_document.deploy_evaluations.json
 }
 
