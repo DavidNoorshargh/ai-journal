@@ -17,18 +17,13 @@ variable "agent_source_sha" {
 }
 
 variable "journal_user_email" {
-  description = "Email of the single journal user. Sign-up stays disabled. This address is not a secret."
+  description = "Email of the single journal user (Cognito username) and the Faithfulness SNS inbox. Sign-up stays disabled. Not a secret."
   type        = string
-  default     = "journal@example.com"
-}
-
-variable "alarm_email" {
-  description = "Real inbox for production Faithfulness alarms (SNS confirm + alerts). Not journal@example.com — that is Cognito only. Set via TF_VAR_alarm_email or untracked terraform.tfvars."
-  type        = string
+  default     = "davidn1478@gmail.com"
 
   validation {
-    condition     = var.alarm_email != "" && !endswith(var.alarm_email, "@example.com")
-    error_message = "Set alarm_email to a real inbox (TF_VAR_alarm_email or terraform.tfvars). journal@example.com cannot receive SNS mail."
+    condition     = var.journal_user_email != "" && !endswith(var.journal_user_email, "@example.com")
+    error_message = "Set journal_user_email to a real inbox (TF_VAR_journal_user_email or terraform.tfvars). @example.com cannot receive SNS mail."
   }
 }
 

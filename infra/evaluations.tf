@@ -249,7 +249,7 @@ resource "aws_sns_topic_policy" "faithfulness" {
 resource "aws_sns_topic_subscription" "faithfulness_email" {
   topic_arn = aws_sns_topic.faithfulness.arn
   protocol  = "email"
-  endpoint  = var.alarm_email
+  endpoint  = var.journal_user_email
 }
 
 resource "aws_cloudwatch_metric_alarm" "faithfulness" {
