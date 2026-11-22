@@ -100,7 +100,7 @@ def test_entry_id_can_come_from_the_object_key():
     assert entries[0]["entryId"] == "note-lantern"
 
 
-def test_fixture_notes_are_dropped_unless_requested():
+def test_phone_excludes_fixtures_and_gate_keeps_only_fixtures():
     client = FakeRetrieve(
         [
             {
@@ -118,8 +118,29 @@ def test_fixture_notes_are_dropped_unless_requested():
     gate = search_entries("lantern", include_fixtures=True, client=client, knowledge_base_id="kb")
 
     assert [entry["entryId"] for entry in phone] == ["note-walk"]
-    assert [entry["entryId"] for entry in gate] == ["fixture-retrieval", "note-walk"]
-    assert "filter" not in client.calls[1]["retrievalConfiguration"]["vectorSearchConfiguration"]
+    assert [entry["entryId"] for entry in gate] == ["fixture-retrieval"]
+    assert client.calls[1]["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] == {
+        "equals": {"key": "fixture", "value": True}
+    }
+
+
+def test_tags_and_fixture_only_are_combined():
+    client = FakeRetrieve([])
+
+    search_entries(
+        "lantern",
+        tags=["thoughts"],
+        include_fixtures=True,
+        client=client,
+        knowledge_base_id="kb",
+    )
+
+    assert client.calls[0]["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] == {
+        "andAll": [
+            {"listContains": {"key": "tags", "value": "thoughts"}},
+            {"equals": {"key": "fixture", "value": True}},
+        ]
+    }
 
 
 def test_one_day_window_drops_other_days():

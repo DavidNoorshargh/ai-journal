@@ -19,7 +19,7 @@ def search_entries(
 
     Date is stored as text, so the index rejects a range filter. The date window is applied to the entries that were retrieved. Tags are still a metadata filter, applied before ranking.
     An empty query with a date range is a time-only search: return the entries in that window.
-    Fixture notes are dropped unless include_fixtures is true, so phone asks stay on the real journal.
+    Phone asks exclude fixture notes. The gate sets include_fixtures so search is fixtures only.
     """
     query, tags, start_date, end_date = _prepare_search(query, tags, start_date, end_date)
     results = _retrieve(query, tags, start_date, end_date, include_fixtures, client, knowledge_base_id)
@@ -88,10 +88,7 @@ def _metadata_filter(tags, include_fixtures):
     tag_clause = _tag_clause(tags)
     if tag_clause is not None:
         clauses.append(tag_clause)
-    if not include_fixtures:
-        clauses.append({"notEquals": {"key": "fixture", "value": True}})
-    if not clauses:
-        return None
+    clauses.append(_fixture_clause(include_fixtures))
     if len(clauses) == 1:
         return clauses[0]
     return {"andAll": clauses}
@@ -105,6 +102,12 @@ def _tag_clause(tags):
     return None
 
 
+def _fixture_clause(include_fixtures):
+    if include_fixtures:
+        return {"equals": {"key": "fixture", "value": True}}
+    return {"notEquals": {"key": "fixture", "value": True}}
+
+
 def _whole_entries(results, include_fixtures):
     entries = {}
     order = []
@@ -113,7 +116,7 @@ def _whole_entries(results, include_fixtures):
         if not entry_id:
             continue
         metadata = result.get("metadata") or {}
-        if not include_fixtures and _is_fixture(entry_id, metadata):
+        if not _keeps_entry(entry_id, metadata, include_fixtures):
             continue
         text = ((result.get("content") or {}).get("text")) or ""
         score = _result_score(result)
@@ -124,6 +127,13 @@ def _whole_entries(results, include_fixtures):
         _append_entry_text(entries[entry_id], text)
         _keep_higher_score(entries[entry_id], score)
     return [entries[entry_id] for entry_id in order]
+
+
+def _keeps_entry(entry_id, metadata, include_fixtures):
+    is_fixture = _is_fixture(entry_id, metadata)
+    if include_fixtures:
+        return is_fixture
+    return not is_fixture
 
 
 def _result_entry_id(result):
