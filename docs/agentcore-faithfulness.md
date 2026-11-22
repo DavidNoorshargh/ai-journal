@@ -2,7 +2,17 @@
 
 AgentCore Evaluations scores the journal's answers with its built-in judge, `Builtin.Faithfulness`. It runs in two places, which is the AWS pattern: as a gate in the pipeline before a new agent reaches the phone, and as monitoring on the answers the phone actually gets. The gate adds a second, exact check: a small evaluator of our own that compares the returned entry ids with the expected ones.
 
-Step 7.3 in [plan.md](plan.md) points here.
+Step 7.3 in [plan.md](plan.md) points here. The README links here for the short accuracy story.
+
+## How accuracy is ensured
+
+Accuracy is three layers that catch different failures.
+
+**Retrieval.** Phone asks search only real notes (`fixture != true`). The gate searches only fixtures (`fixture == true`), so golden questions do not compete with the live journal. On a subject search, Python then applies two score rules: if the best hit is below 0.5, return nothing; otherwise keep only notes within nine tenths of that best. A time-only window skips those cutoffs, because the answer is the notes in range. The model summarises only what search returned, and the phone builds links only from those ids.
+
+**Gate.** After apply, the batch runner asks the golden fixture questions of `DEFAULT`. `Builtin.Faithfulness` fails an answer that conflicts with the question, the search, or the returned notes. The id evaluator fails when the wrong notes came back, which Faithfulness often misses when search is empty. Today the job records those scores; once a threshold is set, it moves `production` only when both pass.
+
+**Monitoring.** Every `production` answer is scored again with Faithfulness. An alarm emails when the score drops. Live retrieval has no expected ids, so the id check does not run online; the gate covers that for the fixture set.
 
 ## What the judge checks
 
@@ -14,9 +24,7 @@ So it catches an answer that says the opposite of a note or gets a date wrong. I
 
 ## Two endpoints
 
-The `DEFAULT` endpoint moves to the newest version on every apply. Today the phone calls `DEFAULT`, so every deploy reaches it straight away.
-
-Terraform adds a `production` endpoint, with `ignore_changes` on its version, so only the gate moves it. The phone calls `qualifier=production`, and the identity-pool role may invoke only that endpoint. `DEFAULT` becomes staging. Rollback is pointing `production` back at the previous version.
+The `DEFAULT` endpoint moves to the newest version on every apply. Terraform owns a `production` endpoint with `ignore_changes` on its version, so only the gate moves it. The phone calls `qualifier=production`, and the identity-pool role may invoke only that endpoint. `DEFAULT` is staging. Rollback is pointing `production` back at the previous version.
 
 ## The golden dataset
 
@@ -59,7 +67,7 @@ Blocking shared-infrastructure regressions too needs AWS's full pattern: a separ
 
 The golden questions are about made-up notes, so committing them reveals nothing about the journal. Three to five fixture notes go into `entries/` with known ids, dates years in the past, subjects the real journal does not have, and sidecar metadata `fixture: true`.
 
-Phone asks and empty-journal restore skip those notes. The gate opts back in with `includeFixtures: true` on the invoke payload so golden questions can still find them. Ids also start with `fixture-` as a second check.
+Phone asks and empty-journal restore skip those notes. The gate opts back in with `includeFixtures: true` on the invoke payload so golden questions can still find them. Search enforces that split in the Knowledge Base filter: phone uses `fixture != true`, gate uses `fixture == true`. Ids also start with `fixture-` as a second check.
 
 ## Monitoring
 

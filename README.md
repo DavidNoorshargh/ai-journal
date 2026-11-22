@@ -6,6 +6,10 @@ Writing stays on the phone, so it works offline. Each entry uploads to S3 when t
 
 The reviewed design and build order are in [docs/plan.md](docs/plan.md).
 
+## Accuracy
+
+The summary stays inside the notes search returned, and the phone only links ids from that set. Subject search drops a result when even the best hit scores below 0.5, then keeps notes within nine tenths of that best so weak neighbours do not ride along. After each apply, a gate asks fixture questions on `DEFAULT` and scores them with Faithfulness plus an exact entry-id check; the phone's `production` endpoint moves only when those pass. Every live answer is scored again with Faithfulness, with an alarm on a drop. How that works is in [docs/agentcore-faithfulness.md](docs/agentcore-faithfulness.md).
+
 ## Architecture
 
 The phone keeps the journal. AWS keeps the searchable copy and writes the answer.
