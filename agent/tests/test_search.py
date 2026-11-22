@@ -62,10 +62,12 @@ def test_chunks_with_the_same_id_are_one_entry():
     client = FakeRetrieve(
         [
             {
+                "score": 0.80,
                 "content": {"text": "The note is about a blue paper lantern."},
                 "metadata": {"entryId": "note-lantern", "date": "20261024", "tags": ['"thoughts"']},
             },
             {
+                "score": 0.75,
                 "content": {"text": "It sits on the kitchen table."},
                 "metadata": {"entryId": "note-lantern", "date": "20261024", "tags": ["thoughts"]},
             },
@@ -88,6 +90,7 @@ def test_entry_id_can_come_from_the_object_key():
     client = FakeRetrieve(
         [
             {
+                "score": 0.80,
                 "content": {"text": "A note."},
                 "location": {"s3Location": {"uri": "s3://bucket/entries/note-lantern.md"}},
                 "metadata": {},
@@ -104,10 +107,12 @@ def test_phone_excludes_fixtures_and_gate_keeps_only_fixtures():
     client = FakeRetrieve(
         [
             {
+                "score": 0.80,
                 "content": {"text": "A blue paper lantern."},
                 "metadata": {"entryId": "fixture-retrieval", "date": "20261024", "fixture": True},
             },
             {
+                "score": 0.60,
                 "content": {"text": "A real walk."},
                 "metadata": {"entryId": "note-walk", "date": "20261106"},
             },
@@ -168,8 +173,16 @@ def test_one_day_window_drops_other_days():
 def test_dashed_dates_are_normalized():
     client = FakeRetrieve(
         [
-            {"content": {"text": "On the day."}, "metadata": {"entryId": "day", "date": "20261024"}},
-            {"content": {"text": "Other."}, "metadata": {"entryId": "other", "date": "20261023"}},
+            {
+                "score": 0.80,
+                "content": {"text": "On the day."},
+                "metadata": {"entryId": "day", "date": "20261024"},
+            },
+            {
+                "score": 0.70,
+                "content": {"text": "Other."},
+                "metadata": {"entryId": "other", "date": "20261023"},
+            },
         ]
     )
 
@@ -198,6 +211,34 @@ def test_a_subject_search_drops_a_note_far_from_the_best_score():
 
     assert [entry["entryId"] for entry in entries] == ["interview", "near"]
     assert "score" not in entries[0]
+
+
+def test_a_subject_search_returns_nothing_when_the_best_score_is_weak():
+    client = FakeRetrieve(
+        [
+            hit("lantern", 0.40, "A blue paper lantern."),
+            hit("walk", 0.38, "A long walk."),
+            hit("tea", 0.35, "A cup of tea."),
+        ]
+    )
+
+    entries = search_entries("neon submarine", client=client, knowledge_base_id="kb")
+
+    assert entries == []
+
+
+def test_a_subject_search_keeps_notes_when_the_best_score_meets_the_floor():
+    client = FakeRetrieve(
+        [
+            hit("interview", 0.50, "The interview."),
+            hit("near", 0.46, "Still about the interview."),
+            hit("lantern", 0.40, "A blue paper lantern."),
+        ]
+    )
+
+    entries = search_entries("SDET interview", client=client, knowledge_base_id="kb")
+
+    assert [entry["entryId"] for entry in entries] == ["interview", "near"]
 
 
 def test_a_time_only_search_keeps_a_weak_score():

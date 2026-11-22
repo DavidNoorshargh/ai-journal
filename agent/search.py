@@ -3,6 +3,8 @@ import os
 # A week of notes fits in one reply. A time-only window asks for every entry in range.
 RESULTS_LIMIT = 20
 TIME_ONLY_LIMIT = 100
+# Bedrock KB guidance: start absolute confidence at 0.5, then trim near the best.
+SUBJECT_SCORE_FLOOR = 0.5
 
 
 def search_entries(
@@ -19,13 +21,14 @@ def search_entries(
 
     Date is stored as text, so the index rejects a range filter. The date window is applied to the entries that were retrieved. Tags are still a metadata filter, applied before ranking.
     An empty query with a date range is a time-only search: return the entries in that window.
+    A subject search needs a best score of at least SUBJECT_SCORE_FLOOR, then keeps notes within nine tenths of that best.
     Phone asks exclude fixture notes. The gate sets include_fixtures so search is fixtures only.
     """
     query, tags, start_date, end_date = _prepare_search(query, tags, start_date, end_date)
     results = _retrieve(query, tags, start_date, end_date, include_fixtures, client, knowledge_base_id)
     entries = _entries_in_window(_whole_entries(results, include_fixtures), start_date, end_date)
     if query.strip():
-        entries = _close_to_the_best(entries)
+        entries = _subject_matches(entries)
     return _without_scores(entries)
 
 
@@ -181,6 +184,20 @@ def _entries_in_window(entries, start_date, end_date):
     if not (start_date or end_date):
         return entries
     return [entry for entry in entries if _date_in_window(entry.get("date") or "", start_date, end_date)]
+
+
+def _subject_matches(entries):
+    entries = _above_score_floor(entries)
+    return _close_to_the_best(entries)
+
+
+def _above_score_floor(entries):
+    if not entries:
+        return []
+    best = max(entry["score"] for entry in entries)
+    if best < SUBJECT_SCORE_FLOOR:
+        return []
+    return entries
 
 
 def _close_to_the_best(entries):
