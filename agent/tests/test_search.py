@@ -188,14 +188,15 @@ def test_a_subject_search_drops_a_note_far_from_the_best_score():
     client = FakeRetrieve(
         [
             hit("interview", 0.80, "The interview."),
-            hit("close", 0.70, "Still about the interview."),
+            hit("near", 0.73, "Still about the interview."),
+            hit("close", 0.70, "Related but weaker."),
             hit("lantern", 0.55, "A blue paper lantern."),
         ]
     )
 
     entries = search_entries("SDET interview", client=client, knowledge_base_id="kb")
 
-    assert [entry["entryId"] for entry in entries] == ["interview", "close"]
+    assert [entry["entryId"] for entry in entries] == ["interview", "near"]
     assert "score" not in entries[0]
 
 

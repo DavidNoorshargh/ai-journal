@@ -187,7 +187,7 @@ def _close_to_the_best(entries):
     if not entries:
         return []
     best = max(entry["score"] for entry in entries)
-    floor = best * 4 / 5
+    floor = best * 9 / 10
     return [entry for entry in entries if entry["score"] >= floor]
 
 
