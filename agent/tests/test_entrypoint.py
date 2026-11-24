@@ -202,6 +202,46 @@ def test_a_time_only_question_keeps_a_blank_query():
     assert calls == [("", None, "20261017", "20261023")]
 
 
+def test_a_time_only_dated_question_clears_the_model_query():
+    calls = []
+
+    def search(query, tags=None, start_date=None, end_date=None, include_fixtures=False):
+        calls.append((query, tags, start_date, end_date))
+        return []
+
+    invoke(
+        {"question": "What happened on 12 April 2018?"},
+        search=search,
+        model=ScriptedModel(
+            {"query": "what happened", "startDate": "20180412", "endDate": "20180412"},
+            "",
+        ),
+        today=date(2026, 10, 24),
+    )
+
+    assert calls == [("", None, "20180412", "20180412")]
+
+
+def test_a_subject_with_a_date_keeps_the_model_query():
+    calls = []
+
+    def search(query, tags=None, start_date=None, end_date=None, include_fixtures=False):
+        calls.append((query, tags, start_date, end_date))
+        return []
+
+    invoke(
+        {"question": "What did I write with during the lunar eclipse on 29 February 2020?"},
+        search=search,
+        model=ScriptedModel(
+            {"query": "quill lunar eclipse", "startDate": "20200229", "endDate": "20200229"},
+            "",
+        ),
+        today=date(2026, 10, 24),
+    )
+
+    assert calls == [("quill lunar eclipse", None, "20200229", "20200229")]
+
+
 def test_empty_search_cites_nothing():
     model = ScriptedModel({"query": "politics"}, "You seem anxious about politics. See invented-id.")
     result = invoke(

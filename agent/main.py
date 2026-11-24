@@ -218,7 +218,7 @@ def _requested_search(reply):
 
 
 def _search_from(question, requested):
-    """A blank or missing search uses the question. A time-only question keeps the model's dates."""
+    """A blank or missing search uses the question. A time-only question keeps the dates and clears the query."""
     if not isinstance(requested, dict):
         requested = {}
     start_date, end_date = _search_dates(question, requested)
@@ -248,12 +248,21 @@ _TIME_WORD = re.compile(
     re.IGNORECASE,
 )
 
+_DAY_NUMBER = re.compile(r"\b(?:[1-9]|[12]\d|3[01])\b")
+
+_BARE_WORD = re.compile(
+    r"\b(?:what|happened|happen|show|me|the|a|an|about|during|in|on|of|my|"
+    r"entries|entry|notes|note|journal|from|to|please|did|do|i|was|were|is|are|"
+    r"there|any|all|for|it|you|your|think|last|this|next|previous|past|same)\b",
+    re.IGNORECASE,
+)
+
 
 def _query_text(question, query, start_date, end_date):
-    if _usable_query(query):
-        return query.strip()
     if (start_date or end_date) and _time_only(question):
         return ""
+    if _usable_query(query):
+        return query.strip()
     return question
 
 
@@ -263,16 +272,9 @@ def _usable_query(query):
 
 def _time_only(question):
     remaining = _TIME_WORD.sub(" ", question)
+    remaining = _DAY_NUMBER.sub(" ", remaining)
     remaining = _BARE_WORD.sub(" ", remaining)
     return not any(character.isalnum() for character in remaining)
-
-
-_BARE_WORD = re.compile(
-    r"\b(?:what|happened|happen|show|me|the|a|an|about|during|in|on|of|my|"
-    r"entries|entry|notes|note|journal|from|to|please|did|do|i|was|were|is|are|"
-    r"there|any|all|for|it|you|your|think|last|this|next|previous|past|same)\b",
-    re.IGNORECASE,
-)
 
 
 def _none_if_blank(value):
