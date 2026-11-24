@@ -8,7 +8,7 @@ Step 7.3 in [plan.md](plan.md) points here. The README links here for the short 
 
 Accuracy is three layers that catch different failures.
 
-**Retrieval.** Phone asks search only real notes (`fixture != true`). The gate searches only fixtures (`fixture == true`), so golden questions do not compete with the live journal. On a subject search, Python then applies two score rules: if the best hit is below 0.5, return nothing; otherwise keep only notes within nine tenths of that best. A time-only window skips those cutoffs, because the answer is the notes in range. The model summarises only what search returned, and the phone builds links only from those ids.
+**Retrieval.** Phone asks search only real notes (`fixture != true`). The gate searches only fixtures (`fixture == true`), so golden questions do not compete with the live journal. On a subject search, Python then applies two score rules: if the best hit is below 0.6, return nothing; otherwise keep only notes within nine tenths of that best. A time-only window skips those cutoffs, because the answer is the notes in range. The model summarises only what search returned, and the phone builds links only from those ids.
 
 **Gate.** After apply, the batch runner asks the golden fixture questions of `DEFAULT`. `Builtin.Faithfulness` fails an answer that conflicts with the question, the search, or the returned notes. The id evaluator fails when the wrong notes came back, which Faithfulness often misses when search is empty. Today the job records those scores; once a threshold is set, it moves `production` only when both pass.
 

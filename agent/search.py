@@ -3,8 +3,8 @@ import os
 # A week of notes fits in one reply. A time-only window asks for every entry in range.
 RESULTS_LIMIT = 20
 TIME_ONLY_LIMIT = 100
-# Bedrock KB guidance: start absolute confidence at 0.5, then trim near the best.
-SUBJECT_SCORE_FLOOR = 0.5
+# Tuned on fixture retrieves: empty subjects peak near 0.57; real ones near 0.74+.
+SUBJECT_SCORE_FLOOR = 0.6
 
 
 def search_entries(

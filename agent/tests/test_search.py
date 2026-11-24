@@ -216,9 +216,9 @@ def test_a_subject_search_drops_a_note_far_from_the_best_score():
 def test_a_subject_search_returns_nothing_when_the_best_score_is_weak():
     client = FakeRetrieve(
         [
-            hit("lantern", 0.40, "A blue paper lantern."),
-            hit("walk", 0.38, "A long walk."),
-            hit("tea", 0.35, "A cup of tea."),
+            hit("lantern", 0.57, "A blue paper lantern."),
+            hit("walk", 0.54, "A long walk."),
+            hit("tea", 0.52, "A cup of tea."),
         ]
     )
 
@@ -230,9 +230,9 @@ def test_a_subject_search_returns_nothing_when_the_best_score_is_weak():
 def test_a_subject_search_keeps_notes_when_the_best_score_meets_the_floor():
     client = FakeRetrieve(
         [
-            hit("interview", 0.50, "The interview."),
-            hit("near", 0.46, "Still about the interview."),
-            hit("lantern", 0.40, "A blue paper lantern."),
+            hit("interview", 0.60, "The interview."),
+            hit("near", 0.55, "Still about the interview."),
+            hit("lantern", 0.50, "A blue paper lantern."),
         ]
     )
 
